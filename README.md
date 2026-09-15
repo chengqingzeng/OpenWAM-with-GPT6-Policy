@@ -1,5 +1,7 @@
 # OpenWAM with GPT‑6 Policy
 
+**Cheng-Ching Tseng · Muka Robotics**
+
 GPT‑6 Astra reviews proposals from **OpenWAM‑Alpha‑Sim‑RoboDojo** and selects native robot actions in **RoboDojo / Isaac Sim 5.1**. This repository adapts the [GPT-as-Policy](https://github.com/anonymous-report-421/GPT-as-Policy) experiment to the released [OpenWAM](https://github.com/OpenWAM-Official/OpenWAM) world–action model.
 
 **Research integration for simulation.** It does not run a physical robot, train a model, or establish a leaderboard score. See [validation](docs/validation.md) for the exact checks performed.
@@ -98,6 +100,38 @@ An offline policy check accepts a native `sim/<episode-id>/observations/*.npz` r
 ```
 
 It verifies the physical-coordinate round trip, generates two proposals, and records latency and PyTorch GPU-memory peaks. It does not call Astra or step the simulator. Test simultaneous policy+simulator memory before scheduling multiple episodes. Full training requirements from upstream do not describe this inference-only setup.
+
+## Thanks / Acknowledgments
+
+We thank the researchers and maintainers whose work makes this integration possible:
+
+- **[OpenWAM](https://github.com/OpenWAM-Official/OpenWAM)** for the open world–action model framework, released RoboDojo checkpoint, and canonical observation/action interfaces.
+- **[Galbot (银河通用)](https://github.com/GalaxyGeneralRobotics)** and the **[GPT-as-Policy authors](https://github.com/anonymous-report-421/GPT-as-Policy)** for their work on embodied intelligence and GPT-based robot policies. The released GPT-as-Policy evaluation code provides this integration's proposal-review loop, bounded corrections, and experiment-recording foundation.
+- **[RoboDojo](https://github.com/RoboDojo-Benchmark/RoboDojo)** and **[XPolicyLab](https://github.com/XPolicyLab/XPolicyLab)** for the simulation benchmark, native robot interfaces, and policy-integration references.
+- **[Physical Intelligence / OpenPI](https://github.com/Physical-Intelligence/openpi)** for the π0.5 baseline used in the preceding comparison experiment.
+
+## Citation
+
+If you use this integration, please cite this software repository:
+
+```bibtex
+@misc{tseng2026openwamgpt6policy,
+  author       = {Tseng, Cheng-Ching},
+  title        = {{OpenWAM with GPT-6 Policy}},
+  year         = {2026},
+  howpublished = {GitHub software repository},
+  url          = {https://github.com/chengqingzeng/OpenWAM-with-GPT6-Policy},
+  note         = {Muka Robotics}
+}
+```
+
+The integration author is **Cheng-Ching Tseng**, affiliated with **Muka Robotics**. Machine-readable citation metadata is available in [CITATION.cff](CITATION.cff) and [CITATION.bib](CITATION.bib).
+
+Please also credit the underlying methods and benchmark using their maintained citation entries:
+
+- [OpenWAM citation](https://github.com/OpenWAM-Official/OpenWAM#citation)
+- [GPT as an Embodied Policy citation](https://github.com/anonymous-report-421/GPT-as-Policy/blob/main/CITATION.bib)
+- [RoboDojo citation](https://github.com/RoboDojo-Benchmark/RoboDojo#-citation)
 
 ## Attribution
 

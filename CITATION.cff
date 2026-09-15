@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this integration, please cite it and the upstream works listed in the README."
+type: software
+title: "OpenWAM with GPT-6 Policy"
+authors:
+  - family-names: "Tseng"
+    given-names: "Cheng-Ching"
+    affiliation: "Muka Robotics"
+repository-code: "https://github.com/chengqingzeng/OpenWAM-with-GPT6-Policy"
+url: "https://github.com/chengqingzeng/OpenWAM-with-GPT6-Policy"
+date-released: "2026-09-15"
+license: MIT
