@@ -79,7 +79,7 @@ bash scripts/container.sh bash "$PWD/scripts/run_case.sh" \
 
 The final argument is the decision budget. Use **100** for the documented reference setting. Use a fresh experiment ID and an unused case for benchmark work; the upstream ledger rejects duplicate reservations. The native 60-case panel is frozen from the supplied assets and verified before execution. This command runs one selected case, not the full panel.
 
-The container uses host networking for loopback RPC, GPU 0 for both processes, policy port **18850**, simulator port **19513**, and `/mnt/rollout/openwam_gpt6` for writable output. Its assets and existing deployment mount are read-only; only the shared managed-auth directory is writable for its normal login refresh and lease. It never stops unrelated jobs.
+The container uses host networking for loopback RPC, GPU 0 for both processes, policy port **18850**, simulator port **19513**, and `/mnt/rollout/openwam_gpt6` for writable output. It renders the native `curobo_tmp.yml` path placeholders in an isolated X5 asset copy and reuses Isaac extension caches in an isolated writable container home. Robot/control parameters are unchanged. Its assets and existing deployment mount are read-only; only the shared managed-auth directory is writable for its normal login refresh and lease. It never stops unrelated jobs.
 
 ## Evidence and outputs
 

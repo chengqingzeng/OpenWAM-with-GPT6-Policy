@@ -19,7 +19,7 @@ def build():
         if head != pins[name]['commit'] or dirty:
             raise SystemExit(f'Pinned clean checkout required: {dep}')
     inputs = [ROOT/'patches/openwam-runtime.patch', ROOT/'configs/pins.json',
-              ROOT/'LICENSE',*sorted((ROOT/'licenses').glob('*')),*sorted((ROOT/'src').rglob('*.py'))]
+              ROOT/'configs/experiment.yaml',*sorted(p for p in (ROOT/'scripts').iterdir() if p.suffix in ('.py','.sh') and not p.name.startswith('.')),ROOT/'LICENSE',*sorted((ROOT/'licenses').glob('*')),*sorted((ROOT/'src').rglob('*.py'))]
     hashes = {str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
     identity = hashlib.sha256(json.dumps(hashes,sort_keys=True).encode()).hexdigest()
     parent = ROOT/'.runtime'
@@ -41,6 +41,8 @@ def build():
         shutil.copytree(ROOT/'src/astra_openwam',staging/'astra_openwam',
                         ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
         shutil.copytree(ROOT/'licenses',staging/'licenses')
+        shutil.copytree(ROOT/'scripts',staging/'integration_scripts',ignore=shutil.ignore_patterns('__pycache__','._*'))
+        shutil.copytree(ROOT/'configs',staging/'integration_configs')
         shutil.copyfile(ROOT/'LICENSE',staging/'LICENSE')
         files = {str(p.relative_to(staging)):hashlib.sha256(p.read_bytes()).hexdigest()
                  for p in sorted(staging.rglob('*')) if p.is_file()}

@@ -17,8 +17,13 @@ done
 mkdir -p "$runtime"
 if [[ -n "$wait_for" ]]; then
   echo 'Waiting for the existing measurement to finish before downloads/install.'
-  while "$python_bin" -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))["state"]=="running" else 1)' "$wait_for"; do
-    sleep 30
+  while true; do
+    state=$("$python_bin" -c 'import json,sys; print(json.load(open(sys.argv[1]))["state"])' "$wait_for")
+    case "$state" in
+      running) sleep 30 ;;
+      completed|failed) break ;;
+      *) echo "Unknown measurement state: $state" >&2; exit 2 ;;
+    esac
   done
 fi
 date -u +%FT%TZ > "$runtime/setup.started"

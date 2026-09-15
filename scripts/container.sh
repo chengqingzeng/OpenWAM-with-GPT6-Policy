@@ -17,6 +17,7 @@ if [[ -d "$ROBODOJO_BASE/container-home/.local/share/ov" && ! -e "$OPENWAM_RUNTI
   cp -a "$ROBODOJO_BASE/container-home/.local/share/ov" "$OPENWAM_RUNTIME/container-home/.local/share/ov"
 fi
 chmod 700 "$OPENWAM_RUNTIME/private" "$OPENWAM_RUNTIME/private/auth_profiles"
+"$repo/.venv/bin/python" "$repo/scripts/prepare_assets.py" "$ROBODOJO_BASE" "$OPENWAM_RUNTIME"
 proxy_env=()
 for name in HTTP_PROXY HTTPS_PROXY http_proxy https_proxy; do
   [[ -z "${!name:-}" ]] || proxy_env+=(--env "$name=${!name}")
@@ -38,6 +39,7 @@ exec sudo docker run --rm --gpus all --network host --shm-size 16g \
   --mount "type=bind,src=$OPENWAM_RUNTIME/cache/isaac-kit/logs,dst=/root/miniconda3/envs/RoboDojo/lib/python3.11/site-packages/isaacsim/kit/logs" \
   --mount "type=bind,src=${UV_PYTHON_ROOT:-/home/ubuntu/.local/share/uv/python},dst=${UV_PYTHON_ROOT:-/home/ubuntu/.local/share/uv/python},readonly" \
   --mount "type=bind,src=$ROBODOJO_BASE/cache/robodojo-data/Assets,dst=/workspace/RoboDojo/Assets,readonly" \
+  --mount "type=bind,src=$OPENWAM_RUNTIME/robot-assets/x5,dst=/workspace/RoboDojo/Assets/Robots/x5,readonly" \
   --mount "type=bind,src=$ROBODOJO_BASE/src/RoboDojo/.git,dst=/workspace/RoboDojo/.git,readonly" \
   "${ROBODOJO_IMAGE:-robodojo-repro-runtime:ee67a14}" \
   bash "$repo/scripts/container_env.sh" "$@"

@@ -13,6 +13,7 @@ from hybrid_rollout.robodojo.robodojo_server.protocol import RPCClient
 
 output=Path(sys.argv[1]).resolve()
 output.mkdir(parents=True,exist_ok=False)
+(output/'native').mkdir()
 port=19514
 log_path=output/'server.log'
 client=None

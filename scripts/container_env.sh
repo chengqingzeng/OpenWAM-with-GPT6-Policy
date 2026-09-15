@@ -5,6 +5,12 @@ export ROBODOJO_PYTHON=/root/miniconda3/envs/RoboDojo/bin/python
 export CODE_ROOT
 CODE_ROOT=$("$ROBODOJO_PYTHON" "$OPENWAM_REPO/scripts/build_runtime.py")
 export ROBODOJO_SOURCE=/workspace/RoboDojo
+"$ROBODOJO_PYTHON" - "$OPENWAM_REPO/configs/pins.json" "$ROBODOJO_SOURCE" <<'PY_CHECK'
+import json,subprocess,sys
+expected=json.load(open(sys.argv[1]))['robodojo']['commit']
+actual=subprocess.check_output(['git','-C',sys.argv[2],'rev-parse','HEAD'],text=True).strip()
+assert actual==expected, 'RoboDojo source differs from the pinned experiment'
+PY_CHECK
 export OPENWAM_SOURCE=$OPENWAM_REPO/.deps/openwam OPENWAM_PYTHON=$OPENWAM_REPO/.venv/bin/python
 export CHECKPOINT=$RUNTIME_ROOT/checkpoints/OpenWAM-Alpha-Sim-RoboDojo
 export CODEX_BIN=$ROBODOJO_BASE/tools/codex-0.153.4/bin/codex

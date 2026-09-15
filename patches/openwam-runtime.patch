@@ -417,17 +417,19 @@
  mkdir -p "$RESULTS_ROOT"
  mkdir "$ARCHIVE" || { echo "Refusing existing/reserved archive: $ARCHIVE" >&2; exit 2; }
  mkdir -p "$SNAPSHOT" "$ARCHIVE/logs" "$ARCHIVE/sim"
-@@ -99,6 +99,9 @@
+@@ -99,6 +99,11 @@
  trap 'exit 130' INT
  trap 'exit 143' TERM
  cp -a "$CODE_ROOT/hybrid_rollout" "$SNAPSHOT/hybrid_rollout"
 +cp -a "$CODE_ROOT/astra_openwam" "$SNAPSHOT/astra_openwam"
 +cp -a "$CODE_ROOT/licenses" "$SNAPSHOT/licenses"
 +cp "$CODE_ROOT/LICENSE" "$SNAPSHOT/LICENSE"
++cp -a "$CODE_ROOT/integration_scripts" "$SNAPSHOT/integration_scripts"
++cp -a "$CODE_ROOT/integration_configs" "$SNAPSHOT/integration_configs"
  if [[ -f "$CODE_ROOT/source_manifest.json" ]]; then
      cp "$CODE_ROOT/source_manifest.json" "$ARCHIVE/submitted_source_manifest.json"
  fi
-@@ -108,24 +111,24 @@
+@@ -108,24 +113,24 @@
      cp "${ROLLOUT_CASE_FILE:?}" "$ARCHIVE/evaluation_case.json"
  fi
  git -C "$ROBODOJO_SOURCE" rev-parse HEAD > "$ARCHIVE/robodojo_head.txt"
@@ -460,7 +462,7 @@
  ) > "$ARCHIVE/logs/policy.log" 2>&1 &
  policy_pid=$!
  fi
-@@ -160,9 +163,9 @@
+@@ -160,9 +165,9 @@
      auth_environment=()
      controller_args=(--evaluation-method "$ROLLOUT_EVALUATION_METHOD")
      controller_pythonpath="$SNAPSHOT"
