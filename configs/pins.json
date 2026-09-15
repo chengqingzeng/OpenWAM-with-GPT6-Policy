@@ -23,5 +23,9 @@
   },
   "codex_cli": "0.153.4",
   "isaac_sim": "5.1.0",
-  "torch": "2.7.1+cu128"
+  "torch": "2.7.1+cu128",
+  "robodojo_assets": {
+    "url": "https://huggingface.co/datasets/RoboDojo-Benchmark/RoboDojo",
+    "revision": "0a709fe7863f6c869a8d141676585a883fce4270"
+  }
 }

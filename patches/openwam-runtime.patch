@@ -545,9 +545,10 @@
     14D proprio, both measured EEF poses, file paths and `next_call`.
 -2. Call `pi05_infer` using the latest observation path and a fresh output
 -   directory. Preserve the original task instruction. Read the new 50×14
+-   proposal and both-arm robot-only FK trajectory. FK is not a simulation of
 +2. Call `openwam_infer` using the latest observation path and a fresh output
 +   directory. Preserve the original task instruction. Read the new 32×16
-    proposal and both-arm robot-only FK trajectory. FK is not a simulation of
++   proposal and both-arm native EEF target trajectory. Targets do not simulate
     contact, grasping, objects or future success.
  3. Assess the last execution and the new proposal separately using the gate.
     Call `robodojo_execute` with the exact proposal path, matching `request_id`,
@@ -626,6 +627,15 @@
  and visible observations, not a hard-coded task script. This rollout does not train the student.
  
  The control method is copied from the successful RoboLab full-agent pipeline:
+@@ -17,7 +17,7 @@
+ agent workflow, not a RoboDojo task demonstration or student-only improvement.
+ Prior successes are not evidence that the current episode is complete.
+ 
+-Inspect images, recorded proprio, per-step proposal FK and actual execution
++Inspect images, recorded proprio, per-step native EEF targets and actual execution
+ history. A gripper command does not prove grasp, and an IK target does not
+ prove arrival. Keep uncertain results uncertain; retract completed subgoals
+ if later visual evidence contradicts them. Use all three camera views,
 --- a/hybrid_rollout/robodojo/skill/run.py
 +++ b/hybrid_rollout/robodojo/skill/run.py
 @@ -14,7 +14,7 @@

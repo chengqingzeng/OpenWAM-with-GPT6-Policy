@@ -36,7 +36,7 @@ for i in range(2):
         peak_allocated_bytes=torch.cuda.max_memory_allocated(),peak_reserved_bytes=torch.cuda.max_memory_reserved(),
         native_shape=list(result['actions'].shape),raw_shape=list(result['raw_eef20'].shape)))
 report=dict(metadata=backend.metadata,load_seconds=load_seconds,coordinate_roundtrip_passed=True,
-    gpu=torch.cuda.get_device_name(),torch_version=torch.__version__,inferences=records,
+    gpu=torch.cuda.get_device_name(),gpu_total_bytes=torch.cuda.get_device_properties(0).total_memory,torch_version=torch.__version__,inferences=records,
     scope='Two offline proposals on one recorded observation; no Astra call, no simulator actions, not a success-rate result')
 (a.output/'report.json').write_text(json.dumps(report,indent=2)+'\n')
 print(json.dumps(report,indent=2))

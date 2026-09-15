@@ -116,3 +116,27 @@ def test_lossless_recording(tmp_path,monkeypatch):
         savez_record(tmp_path/(level+'.npz'),**arrays)
         with np.load(tmp_path/(level+'.npz'),allow_pickle=False) as saved:
             for key,value in arrays.items(): np.testing.assert_array_equal(saved[key],value)
+
+
+def test_mixed_command_recording_keeps_dimensions_and_gripper_indices(tmp_path):
+    import json
+    from hybrid_rollout.robodojo.robodojo_server.debug_recorder import DecisionTimeline
+    from hybrid_rollout.robodojo.robodojo_server.video_panel import gripper_change
+    def save(name,value): (tmp_path/name).write_text(json.dumps(value))
+    save('run.json',dict(evaluation_method='openwam_plus_gpt',action_horizon=32,action_dim=16))
+    records=[]
+    for i,mode in enumerate(('student','eef')):
+        records.append(dict(decision=i,start_tick=i,end_tick=i+1,executed_steps=1,response=dict(mode=mode,steps=1)))
+        np.savez(tmp_path/f'proposal_{i:03d}.npz',actions=chunk(),raw_actions=np.ones((32,20)))
+        action=chunk()[:1] if mode=='student' else np.zeros((1,14))
+        if mode=='eef': action[0,[6,13]]=[.8,.9]
+        np.savez(tmp_path/f'execution_{i:03d}.npz',actions=action,states=np.zeros((1,14)))
+    save('history.json',records)
+    timeline=DecisionTimeline(tmp_path)
+    student,correction=timeline.segments
+    assert np.asarray(student['delta_vs_openwam_prefix']).shape==(1,16)
+    assert not student['numeric_action_changed']
+    assert correction['delta_vs_openwam_prefix']==[] and correction['codex_override']
+    assert 'L 0.25→0.80' in gripper_change(correction,0)
+    assert 'R 0.75→0.90' in gripper_change(correction,0)
+    assert timeline.at(1)[0]['decision']==0 and timeline.at(2)[0]['decision']==1
