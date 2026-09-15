@@ -15,6 +15,7 @@ else
 fi
 ROLLOUT_EVAL_MANIFEST_SHA256=$("$ROBODOJO_PYTHON" -c 'import json,sys; print(json.load(open(sys.argv[1]))["panel_sha256"])' "$ROLLOUT_EVAL_MANIFEST")
 export ROLLOUT_EVAL_MANIFEST_SHA256
-export ROBODOJO_TASK=${ROLLOUT_CASE_ID%%__*} ROLLOUT_REPLICA_ID=6 ROLLOUT_COUNT=1 ROLLOUT_ATTEMPT=0
+ROLLOUT_REPLICA_ID=$("$ROBODOJO_PYTHON" -c 'import json,sys; rows=[c for c in json.load(open(sys.argv[1]))["cases"] if c["case_id"]==sys.argv[2]]; assert len(rows)==1, "Unknown frozen case"; print(rows[0]["replica_id"])' "$ROLLOUT_EVAL_MANIFEST" "$ROLLOUT_CASE_ID")
+export ROBODOJO_TASK=${ROLLOUT_CASE_ID%%__*} ROLLOUT_REPLICA_ID ROLLOUT_COUNT=1 ROLLOUT_ATTEMPT=0
 export ROLLOUT_MAX_SECONDS=7200 CODEX_IMAGE_MAX_EDGE=480
 exec bash "$CODE_ROOT/hybrid_rollout/robodojo/cluster_entrypoint.sh"

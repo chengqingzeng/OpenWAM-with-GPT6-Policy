@@ -1,0 +1,62 @@
+{
+  "status": "passed",
+  "model_calls": 0,
+  "native_ee_steps": 1,
+  "bounded_dls_steps": 1,
+  "calibration_check": {
+    "arms": {
+      "left": {
+        "position_error_m": 2.2110029468852122e-08,
+        "rotation_error_rad": 0.0003019400256056661
+      },
+      "right": {
+        "position_error_m": 2.2110029468852122e-08,
+        "rotation_error_rad": 0.0003019400256056661
+      }
+    },
+    "position_tolerance_m": 0.0001,
+    "rotation_tolerance_rad": 0.001
+  },
+  "measured_displacement_m": 0.004474271088838577,
+  "fk_check": {
+    "arms": {
+      "left": {
+        "position_error_m": 5.831615233906747e-08,
+        "rotation_error_rad": 1.7029852924584419e-07,
+        "passed": true
+      },
+      "right": {
+        "position_error_m": 5.831615233906747e-08,
+        "rotation_error_rad": 1.7029852924622556e-07,
+        "passed": true
+      }
+    },
+    "passed": true,
+    "physical_steps": 0
+  },
+  "native_action_shape": [
+    16
+  ],
+  "correction_shape": [
+    14
+  ],
+  "control_dt": 0.04,
+  "cameras": {
+    "cam_high": [
+      480,
+      640,
+      3
+    ],
+    "cam_left_wrist": [
+      480,
+      640,
+      3
+    ],
+    "cam_right_wrist": [
+      480,
+      640,
+      3
+    ]
+  },
+  "benchmark_result": false
+}

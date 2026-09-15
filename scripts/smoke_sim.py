@@ -35,14 +35,18 @@ with log_path.open('w') as log:
         def request(op,tick=0,**kwargs):
             return client.request(op,episode_id=identity['episode_id'],step_id=tick,**kwargs)
         bases=request('robot_bases')
-        check_calibration(bases,contract.arx_x5_calibration())
+        (output/'base-transforms.json').write_text(json.dumps({k:v.tolist() for k,v in bases.items()},indent=2))
+        calibration_check=check_calibration(bases,contract.arx_x5_calibration())
         obs=request('teacher_observation')
         np.savez_compressed(output/'initial_observation.npz',**obs)
         row=np.concatenate([np.r_[obs['eef_positions'][i],obs['eef_quaternions_wxyz'][i],obs['states'][7*i+6]] for i in (0,1)])
+        row[2] += .005  # Small native left-arm lift, not just a stationary no-op.
         preview=request('eef_preview',actions=np.repeat(row[None],32,axis=0))
         native=request('eef_chunk_step',actions=row[None])
         assert native['step_id']==1 and len(native['steps'])==1
         obs_after=request('teacher_observation',1)
+        measured_displacement=float(np.linalg.norm(obs_after['eef_positions'][0]-obs['eef_positions'][0]))
+        assert measured_displacement > 1e-6, 'Native EE command produced no measured motion'
         targets={arm:dict(position=obs_after['eef_positions'][i].tolist(),
             quaternion_wxyz=obs_after['eef_quaternions_wxyz'][i].tolist(),gripper_closed=bool(obs_after['states'][7*i+6]<.5),
             gripper_opening=float(obs_after['states'][7*i+6])) for i,arm in enumerate(('left','right'))}
@@ -51,7 +55,7 @@ with log_path.open('w') as log:
         assert correction['step_id']==2 and len(correction['steps'])==1
         final=request('finish_pilot',2,reason='infrastructure_smoke')
         report=dict(status='passed',model_calls=0,native_ee_steps=1,bounded_dls_steps=1,
-            calibration_checked=True,fk_check=preview['measured_fk_check'],
+            calibration_check=calibration_check,measured_displacement_m=measured_displacement,fk_check=preview['measured_fk_check'],
             native_action_shape=list(np.asarray(native['steps'][0]['executed_action']).shape),
             correction_shape=list(np.asarray(correction['steps'][0]['executed_action']).shape),
             control_dt=final['control_dt'],cameras={k:list(obs[k].shape) for k in ('cam_high','cam_left_wrist','cam_right_wrist')},

@@ -53,6 +53,12 @@ def test_calibration_rejects_frame_drift_and_accepts_quaternion_sign():
     calibration = dict(arms={arm:dict(base_pos_relative_to_env_origin=root[:3,3],base_quat_wxyz=-q)
                             for arm in ('left','right')})
     check_calibration(dict(left=root,right=root),calibration)
+    rounded = root.copy()
+    rounded[:3,:3] = Rotation.from_euler('z',.00030194).as_matrix() @ root[:3,:3]
+    check_calibration(dict(left=rounded,right=rounded),calibration)
+    rounded[:3,:3] = Rotation.from_euler('z',.002).as_matrix() @ root[:3,:3]
+    with pytest.raises(ValueError,match='calibration'):
+        check_calibration(dict(left=rounded,right=root),calibration)
     bad = root.copy(); bad[0,3] += .01
     with pytest.raises(ValueError,match='calibration'):
         check_calibration(dict(left=bad,right=root),calibration)

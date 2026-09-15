@@ -1,11 +1,13 @@
 """Keep the baseline gate/recording; route the student through native EEF commands."""
 from hybrid_rollout.robodojo.robodojo_server.client import RoboDojoTools
 from .contract import check_calibration
+from hybrid_rollout.robodojo.io import write_json
 
 
 class OpenWAMTools(RoboDojoTools):
     def infer(self, **arguments):
-        check_calibration(self._rpc('robot_bases'), self.student.metadata['calibration'])
+        checks = check_calibration(self._rpc('robot_bases'), self.student.metadata['calibration'])
+        write_json(self.output/'base_calibration_check.json', checks)
         return super().infer(**arguments)
 
     def _rpc(self, op, **kwargs):

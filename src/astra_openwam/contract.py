@@ -8,6 +8,7 @@ NATIVE_DIM = 16
 
 def check_calibration(actual, calibration):
     """Compare the measured robot roots with the checkpoint's fixed sim frames."""
+    checks = {}
     for arm in ('left', 'right'):
         root = np.asarray(actual[arm], float)
         c = calibration['arms'][arm]
@@ -16,8 +17,12 @@ def check_calibration(actual, calibration):
             raise ValueError('Invalid measured robot base')
         position_error = np.linalg.norm(root[:3,3]-c['base_pos_relative_to_env_origin'])
         angle_error = Rotation.from_matrix(root[:3,:3] @ expected.T).magnitude()
-        if position_error > 1e-4 or angle_error > 1e-4:
-            raise ValueError(f'{arm} robot base differs from the checkpoint calibration')
+        if position_error > 1e-4 or angle_error > 1e-3:
+            raise ValueError(f'{arm} robot base differs from the checkpoint calibration: position_error_m={position_error:.8g}, rotation_error_rad={angle_error:.8g}, actual={root.tolist()}')
+        checks[arm] = dict(position_error_m=float(position_error), rotation_error_rad=float(angle_error))
+    # The published .707 root quaternion becomes a 0.000302-rad deviation in Isaac.
+    # Keep canonical OpenWAM conversion; tolerate native quaternion rounding only.
+    return dict(arms=checks, position_tolerance_m=1e-4, rotation_tolerance_rad=1e-3)
 
 
 def native_chunk(value, *, horizon=HORIZON):

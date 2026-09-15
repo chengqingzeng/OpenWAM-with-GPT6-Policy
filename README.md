@@ -17,7 +17,7 @@ flowchart LR
   D --> S
 ```
 
-The OpenWAM input uses the original instruction, three original RGB arrays, measured link6 poses, and native gripper commands. Its official preprocessing, normalization statistics, 80D unified representation and EEF20 decoding are retained. The host converts arm-base poses to environment-origin coordinates with OpenWAM's canonical helpers. The simulator's measured base transforms must match that calibration.
+The OpenWAM input uses the original instruction, three original RGB arrays, measured link6 poses, and native gripper commands. Its official preprocessing, normalization statistics, 80D unified representation and EEF20 decoding are retained. The host converts arm-base poses to environment-origin coordinates with OpenWAM's canonical helpers. The simulator's measured base transforms must match that calibration within 0.1 mm / 0.001 rad. The angular tolerance covers the measured 0.000302 rad rounding of the published `.707` root quaternion in Isaac; neither the canonical conversion nor the physical configuration is changed. Per-run deviations are recorded.
 
 Astra sees all **32** target poses and current observations. It can accept the first **1–15** targets or, following the original outcome/intent gate, issue **1–5** bounded corrections. Unexecuted targets are discarded before a fresh proposal. There is no speculative physics, rollback, hidden object-state planner, or automatic retry of a mutating request.
 
