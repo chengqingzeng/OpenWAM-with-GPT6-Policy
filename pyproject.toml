@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "astra-openwam"
+version = "0.1.0"
+description = "GPT-6 Astra reviews OpenWAM EEF proposals in RoboDojo simulation"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+dependencies = ["numpy>=1.26,<3", "Pillow>=10,<13", "scipy>=1.11,<2", "PyYAML>=6,<7", "msgpack>=1,<2", "imageio[ffmpeg]>=2.28,<3"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

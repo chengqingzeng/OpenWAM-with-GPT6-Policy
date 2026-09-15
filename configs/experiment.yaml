@@ -1,0 +1,38 @@
+schema: astra_openwam.experiment.v1
+teacher:
+  model: gpt-6-astra
+  reasoning_effort: xhigh
+  image_preview_max_edge: 480
+  managed_login: true
+policy:
+  checkpoint: OpenWAM/OpenWAM-Alpha-Sim-RoboDojo
+  denoise_steps: 10
+  denoise_mode: sync
+  seed: 42
+  compile: false
+  dit_cache: false
+  decode_video: false
+  raw_action_dimension: 20
+  model_action_dimension: 80
+  native_pose_dimension: 16
+  horizon: 32
+control:
+  student_prefix_max_steps: 15
+  correction_max_steps: 5
+  correction_translation_limit_m: 0.05
+  correction_rotation_limit_rad: 0.35
+  max_decisions: 100
+  control_dt_seconds: 0.04
+  gate: failure-or-intent
+  native_termination_required: true
+  rollback: false
+  reuse_unexecuted_proposal: false
+recording:
+  raw_observation_npz: true
+  all_control_steps: true
+  cameras: [cam_high, cam_left_wrist, cam_right_wrist]
+evaluation:
+  frozen_panel_required: true
+  method: openwam_plus_gpt
+  success_source: native_RoboDojo
+  decision_budget_is_censored: true

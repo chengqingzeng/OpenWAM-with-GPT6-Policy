@@ -1,0 +1,745 @@
+--- a/hybrid_rollout/robodojo/artifact_manifest.py
++++ b/hybrid_rollout/robodojo/artifact_manifest.py
+@@ -98,8 +98,8 @@
+     if run.get('evaluation_method') == 'gpt_only':
+         worker = read_json(root/'controller/codex_workspace/worker.json', {})
+         calls = [read_json(p, {}) for p in (root/'controller/codex_workspace').glob('call_*_request.json')]
+-        checks['gpt_only_no_pi05_service'] = (
+-            run.get('pi05_enabled') is False and result.get('pi05_enabled') is False
++        checks['gpt_only_no_openwam_service'] = (
++            run.get('openwam_enabled') is False and result.get('openwam_enabled') is False
+             and result.get('predictions') == 0 and result.get('student_steps') == 0
+             and not (root/'policy.pid').exists() and not (root/'policy_identity.json').exists()
+             and not list((root/'controller').glob('proposal_*.npz')))
+@@ -141,7 +141,7 @@
+     verified = all(checks.values()) and bool(render_inventory)
+     return {
+         'schema': 'hybrid_rollout.robodojo.artifacts.v1',
+-        'evaluation_method': run.get('evaluation_method', 'pi05_plus_gpt'),
++        'evaluation_method': run.get('evaluation_method', 'openwam_plus_gpt'),
+         'created_utc': datetime.now(timezone.utc).isoformat(),
+         'status': 'verified' if verified else 'incomplete',
+         'run_root': str(root),
+--- a/hybrid_rollout/robodojo/batch.py
++++ b/hybrid_rollout/robodojo/batch.py
+@@ -88,7 +88,7 @@
+ def run_batch(env, *, episode_command=None):
+     env = dict(env)
+     from .method import evaluation_method
+-    method = evaluation_method(env.get('ROLLOUT_EVALUATION_METHOD', 'pi05_plus_gpt'))
++    method = evaluation_method(env.get('ROLLOUT_EVALUATION_METHOD', 'openwam_plus_gpt'))
+     env['ROLLOUT_EVALUATION_METHOD'] = method
+     for name in ('ROLLOUT_EXPERIMENT_ID', 'ROBODOJO_TASK', 'ROLLOUT_REPLICA_ID'):
+         if not re.fullmatch(r'[A-Za-z0-9_-]+', env.get(name, '')):
+--- a/hybrid_rollout/robodojo/case_ledger.py
++++ b/hybrid_rollout/robodojo/case_ledger.py
+@@ -21,7 +21,7 @@
+     return json.loads(path.read_text()) if path.is_file() else {}
+ 
+ 
+-def build_ledger(shared, panel, preferred_task=None, *, method='pi05_plus_gpt'):
++def build_ledger(shared, panel, preferred_task=None, *, method='openwam_plus_gpt'):
+     from .method import evaluation_method
+     method = evaluation_method(method)
+     shared = Path(shared)
+@@ -53,7 +53,7 @@
+             batch = read_optional(path)
+             if batch.get('panel_sha256') != panel['panel_sha256']:
+                 continue
+-            if batch.get('evaluation_method', 'pi05_plus_gpt') != method:
++            if batch.get('evaluation_method', 'openwam_plus_gpt') != method:
+                 continue
+             for episode in batch.get('episodes', []):
+                 row = cases[episode['case_id']]
+@@ -110,7 +110,7 @@
+             plan = read_optional(path)
+             if plan.get('evaluation_panel_sha256') != panel['panel_sha256']:
+                 continue
+-            if plan.get('evaluation_method', 'pi05_plus_gpt') != method:
++            if plan.get('evaluation_method', 'openwam_plus_gpt') != method:
+                 continue
+             batch_path = str(Path(plan['batch_result']))
+             for case in plan['evaluation_cases']:
+@@ -164,10 +164,10 @@
+         cases=list(cases.values()))
+ 
+ 
+-def refresh(shared, manifest, preferred_task='classify_objects_by_language', *, method='pi05_plus_gpt'):
++def refresh(shared, manifest, preferred_task='classify_objects_by_language', *, method='openwam_plus_gpt'):
+     shared = Path(shared).resolve()
+     panel = read_panel(manifest)
+-    suffix = '' if method == 'pi05_plus_gpt' else '_'+method
++    suffix = '' if method == 'openwam_plus_gpt' else '_'+method
+     directory = shared/'evaluation'/f'{panel["panel_id"]}{suffix}_progress'
+     directory.mkdir(parents=True, exist_ok=True)
+     # All writers use the same lock and atomic JSON replacement.
+@@ -223,8 +223,8 @@
+ 
+ 
+ def require_available(shared, panel, case_id, own_submission_batch_path=None, *, rerun_of=None,
+-                      method='pi05_plus_gpt'):
+-    if rerun_of is not None and method != 'pi05_plus_gpt':
++                      method='openwam_plus_gpt'):
++    if rerun_of is not None and method != 'openwam_plus_gpt':
+         raise ValueError('Context-pair exemptions apply only to hybrid evaluation')
+     ledger = build_ledger(shared, panel, method=method)
+     if ledger['errors']:
+--- a/hybrid_rollout/robodojo/cluster_entrypoint.sh
++++ b/hybrid_rollout/robodojo/cluster_entrypoint.sh
+@@ -6,11 +6,11 @@
+ export RUNTIME_ROOT="${RUNTIME_ROOT:-/mnt/rollout/robodojo_mixed_control}"
+ export ROLLOUT_SHARED_ROOT="${ROLLOUT_SHARED_ROOT:-$RUNTIME_ROOT}"
+ export ROBODOJO_SOURCE="${ROBODOJO_SOURCE:-$RUNTIME_ROOT/src/RoboDojo}"
+-export OPENPI_SOURCE="${OPENPI_SOURCE:-$ROBODOJO_SOURCE/XPolicyLab/policy/Pi_05/openpi}"
++export OPENWAM_SOURCE="${OPENWAM_SOURCE:-$RUNTIME_ROOT/repos/openwam}"
+ export ROBODOJO_PYTHON="${ROBODOJO_PYTHON:-$RUNTIME_ROOT/sim-venv/bin/python}"
+-export OPENPI_PYTHON="${OPENPI_PYTHON:-/mnt/rollout/openpi_mailbox_repro/openpi-venv/bin/python}"
+-export OPENPI_DATA_HOME="${OPENPI_DATA_HOME:-/mnt/rollout/openpi_mailbox_repro/openpi-cache}"
+-export CHECKPOINT="${CHECKPOINT:-$RUNTIME_ROOT/checkpoints/RoboDojo-sim-arx_x5-joint-0/59999}"
++export OPENWAM_PYTHON="${OPENWAM_PYTHON:-$RUNTIME_ROOT/policy-venv/bin/python}"
++export OPENWAM_DATA_HOME="${OPENWAM_DATA_HOME:-$RUNTIME_ROOT/cache/openwam}"
++export CHECKPOINT="${CHECKPOINT:-$RUNTIME_ROOT/checkpoints/OpenWAM-Alpha-Sim-RoboDojo}"
+ export CODEX_BIN="${CODEX_BIN:?Set CODEX_BIN to the pinned shared Codex 0.153.4 executable}"
+ export ROLLOUT_CODEX_VERSION="${ROLLOUT_CODEX_VERSION:-0.153.4}"
+ export POLICY_GPU="${POLICY_GPU:-0}" SIM_GPU="${SIM_GPU:-1}"
+@@ -42,8 +42,8 @@
+ for executable in "$ROBODOJO_PYTHON" "$CODEX_BIN"; do
+     [[ -x "$executable" ]] || { echo "Missing shared executable: $executable" >&2; exit 2; }
+ done
+-if [[ "${ROLLOUT_EVALUATION_METHOD:-pi05_plus_gpt}" == pi05_plus_gpt ]]; then
+-    [[ -x "$OPENPI_PYTHON" ]] || { echo "Missing shared policy executable: $OPENPI_PYTHON" >&2; exit 2; }
++if [[ "${ROLLOUT_EVALUATION_METHOD:-openwam_plus_gpt}" == openwam_plus_gpt ]]; then
++    [[ -x "$OPENWAM_PYTHON" ]] || { echo "Missing shared policy executable: $OPENWAM_PYTHON" >&2; exit 2; }
+ fi
+ source "$ENTRY_ROOT/tool_environment.sh"
+ umask 077
+--- a/hybrid_rollout/robodojo/evaluation.py
++++ b/hybrid_rollout/robodojo/evaluation.py
+@@ -50,7 +50,7 @@
+                        task=task, runtime_task=task + ('_random' if random else ''),
+                        variant=variant, replica_id=replica, rollout_index=index,
+                        eval_seed=eval_seed, layout_id=layout_id, reset_seed=layout_id,
+-                       simulator_initial_seed=0, policy_rng_seed=0)
++                       simulator_initial_seed=0, policy_rng_seed=42)
+ 
+ 
+ def file_record(source, path):
+@@ -84,7 +84,7 @@
+                  eval_seed=eval_seed, native_source_commit=head, native_source_files=native_files,
+                  seed_semantics=dict(eval_seed='published layout group', layout_id='native sorted layout index',
+                      reset_seed='layout_id, passed to native reset', simulator_initial_seed='native startup seed',
+-                     policy_rng_seed='OpenPI JAX initial key; fresh process, no warmup inference'),
++                     policy_rng_seed='OpenWAM generation seed 42 at each fresh proposal; fresh process, no warmup inference'),
+                  pairing='Reuse this manifest unchanged across methods; compare observed initial fingerprints too',
+                  invalid_layout_policy='Record and exclude native-invalid cases; no automatic replacement or retry',
+                  cases=cases)
+--- a/hybrid_rollout/robodojo/method.py
++++ b/hybrid_rollout/robodojo/method.py
+@@ -1,7 +1,7 @@
+ """Explicit evaluation method identity; never infer it from an auth provider."""
+ import os
+ 
+-METHODS = ('pi05_plus_gpt', 'gpt_only')
++METHODS = ('openwam_plus_gpt', 'gpt_only')
+ 
+ 
+ def evaluation_method(value=None):
+--- a/hybrid_rollout/robodojo/prompt_context.py
++++ b/hybrid_rollout/robodojo/prompt_context.py
+@@ -1,6 +1,6 @@
+ """Version of teacher-visible evaluation guidance, independent of model/source."""
+ 
+-CONTEXT_VERSION = 'v3'
++CONTEXT_VERSION = 'v3-openwam-eef'
+ 
+ # Public task semantics only: no layout truth, score queries or action script.
+ TASK_NOTES = {
+--- a/hybrid_rollout/robodojo/robodojo_server/client.py
++++ b/hybrid_rollout/robodojo/robodojo_server/client.py
+@@ -19,7 +19,7 @@
+ from .action_edit_kinematics import edited_targets
+ from .debug_recorder import DebugVideoRecorder
+ from .decision_log import decision_event, emit
+-from .proposal_diagnostics import action_diagnostics
++from astra_openwam.contract import diagnostics as action_diagnostics
+ 
+ 
+ ARMS = ('left', 'right')
+@@ -101,7 +101,7 @@
+             return dict(tool='robodojo_start', task=self.task,
+                         output_dir=str(self.output/'observations'/'000'))
+         if self.phase == 'infer':
+-            return dict(tool='pi05_infer', observation_path=str(self.observation_path),
++            return dict(tool='openwam_infer', observation_path=str(self.observation_path),
+                         output_dir=str(self.output/'proposals'/f'{index:03d}'))
+         if self.phase == 'execute':
+             return dict(tool='robodojo_execute', proposal_path=str(self.proposal_path),
+@@ -164,7 +164,7 @@
+             raise RuntimeError('Launched RoboDojo task differs from requested task')
+         identity = self.student.metadata['checkpoint_sha256']
+         config = self.student.metadata['config']
+-        version = f'OpenPI-JAX/{config}/{identity[:16]}'
++        version = f'{self.student.metadata["backend"]}/{config}/{identity[:16]}'
+         reset = self.sim.request('reset', seed=self.seed, source='student', policy_version=version)
+         if reset.get('instruction'):
+             self.meta['instruction'] = reset['instruction']
+@@ -178,7 +178,7 @@
+                   context_version=CONTEXT_VERSION,
+                   prompt_sha256=self.prompt_sha256,
+                   student_policy_version=version, student_policy_sha256=identity)
+-        self.run = dict(schema='robodojo_rollout.run.v1', teacher='codex_tools',
++        self.run = dict(schema='robodojo_rollout.run.v1', teacher='codex_tools', evaluation_method='openwam_plus_gpt',
+             context_version=CONTEXT_VERSION,
+             teacher_model=MODEL, teacher_model_provider=PROVIDER,
+             teacher_reasoning_effort=EFFORT,
+@@ -187,7 +187,7 @@
+             config=config, robot_profile=self.profile, checkpoint=self.student.metadata['checkpoint'],
+             action_horizon=self.student.metadata.get('action_horizon', 15),
+             action_dim=self.student.metadata.get('action_dim', 8),
+-            student_backend='OpenPI/JAX', student_identity_sha256=identity,
++            student_backend=self.student.metadata['backend'], student_identity_sha256=identity,
+             student_server_metadata=self.student.metadata, teacher_off=False, split=None,
+             gate_policy='failure-or-intent', no_rollback=True,
+             gate_instruction_sha256=hashlib.sha256(GATE_INSTRUCTION.encode()).hexdigest(),
+@@ -202,7 +202,7 @@
+         return self._observation(directory)
+ 
+     def infer(self, **arguments):
+-        directory = self._check('pi05_infer', arguments)
++        directory = self._check('openwam_infer', arguments)
+         directory.mkdir(parents=True)
+         decision = len(self.history)
+         self.proposal_path = directory/'actions.npz'
+--- a/hybrid_rollout/robodojo/robodojo_server/debug_recorder.py
++++ b/hybrid_rollout/robodojo/robodojo_server/debug_recorder.py
+@@ -153,23 +153,24 @@
+                     raw = data['raw_actions'].copy()
+             with np.load(self.controller/f'execution_{decision:03d}.npz', allow_pickle=False) as data:
+                 executed, states = data['actions'].copy(), data['states'].copy()
+-            horizon, dim = self.run.get('action_horizon', 50), self.run.get('action_dim', 14)
+-            if (not direct and proposed.shape != (horizon, dim)) or executed.shape != (n, dim) or states.shape != (n, dim):
++            horizon, dim = self.run.get('action_horizon', 32), self.run.get('action_dim', 16)
++            command_dim = 16 if record['response']['mode'] == 'student' else 14
++            if (not direct and proposed.shape != (horizon, dim)) or executed.shape != (n, command_dim) or states.shape != (n, 14):
+                 raise ValueError('Unexpected proposal/execution array shape')
+             if not all(np.isfinite(a).all() for a in (proposed, raw, executed, states)):
+                 raise ValueError('Nonfinite action or state in debug recording')
+             mode = record['response']['mode']
+-            delta = np.empty((0, dim)) if direct else executed - proposed[:n]
++            delta = executed - proposed[:n] if mode == 'student' else np.empty((0, dim))
+             request = read_json(self.controller/f'request_{decision:03d}.json', {})
+-            segment = dict(record, request=request, evaluation_method='gpt_only' if direct else 'pi05_plus_gpt',
+-                raw_pi05_actions=raw.tolist(),
+-                pi05_actions=proposed.tolist(), executed_actions=executed.tolist(),
+-                measured_states=states.tolist(), delta_vs_pi05_prefix=delta.tolist(),
++            segment = dict(record, request=request, evaluation_method='gpt_only' if direct else 'openwam_plus_gpt',
++                raw_openwam_actions=raw.tolist(),
++                openwam_actions=proposed.tolist(), executed_actions=executed.tolist(),
++                measured_states=states.tolist(), delta_vs_openwam_prefix=delta.tolist(),
+                 eef_execution=read_json(self.controller/f'edit_{decision:03d}.json', []),
+                 codex_override=not direct and mode in ('edit', 'eef'),
+                 prefix_only=mode == 'student' and record['response']['steps'] < horizon,
+                 robot_profile='robodojo',
+-                numeric_action_changed=None if direct else bool(np.any(np.abs(delta) > 1e-6)))
++                numeric_action_changed=None if direct else bool(mode != 'student' or np.any(np.abs(delta) > 1e-6)))
+             self.segments.append(segment)
+             previous_end = end
+         self.starts = [s['start_tick'] for s in self.segments]
+--- a/hybrid_rollout/robodojo/robodojo_server/server.py
++++ b/hybrid_rollout/robodojo/robodojo_server/server.py
+@@ -67,15 +67,15 @@
+         from utils.pipeline_utils import process_config, process_randomization
+         from src.eval_client import eval_env
+         from .rpc import serve
+-        from .session import RoboDojoSession
++        from astra_openwam.session import OpenWAMSession as RoboDojoSession
+         root = Path(ENV_CONFIG_PATH)
+         evaluation = load_yaml(str(root/'arx_x5.yml'))
+         evaluation.update(task_name=args.task, num_envs=1, device_id=0, eval_batch=False,
+-            policy_name='Pi_05', additional_info='codex_hybrid', seed=args.eval_seed,
++            policy_name='OpenWAM', additional_info='astra_openwam', seed=args.eval_seed,
+             physx_monitor_enabled=enable_monitor)
+         values = {key: load_yaml(str(root/key/(evaluation['config'][key]+'.yml')))
+                   for key in ('sim', 'scene', 'camera', 'robot')}
+-        values.update(eval_cfg=evaluation, deploy_cfg=dict(port=1, policy_name='Pi_05'),
++        values.update(eval_cfg=evaluation, deploy_cfg=dict(port=1, policy_name='OpenWAM'),
+             task_env=load_yaml(registry.task_config_path(str(Path(ROOT_DIR)/'task'/BENCHMARK/'config'), args.task)))
+         cfg = OmegaConf.create(values)
+         cfg.sim.scene.num_envs = 1
+@@ -84,9 +84,9 @@
+         cfg.eval_cfg.eval_num = 1
+         cfg.camera.default_frequency = cfg.eval_cfg.observation.collect_freq
+         cfg.sim.seed = [0]  # Native startup; the controller later resets the selected layout_id.
+-        # EEF corrections use bounded robot-only DLS, never object-aware cuRobo.
++        # OpenWAM student EEF targets use native RoboDojo IK; Astra corrections retain bounded DLS.
+         for robot in cfg.robot.robots:
+-            robot.need_planner = False
++            robot.need_planner = True
+         original = eval_env.WsModelClient
+         try:
+             eval_env.WsModelClient = NoPolicyConnection
+--- a/hybrid_rollout/robodojo/robodojo_server/session.py
++++ b/hybrid_rollout/robodojo/robodojo_server/session.py
+@@ -1,5 +1,6 @@
+ """One RoboDojo episode, native action stepping and success/timeout checks."""
+ import hashlib
++from astra_openwam.recording_io import savez_record
+ from pathlib import Path
+ import uuid
+ import numpy as np
+@@ -81,7 +82,7 @@
+         if record:
+             directory = self.episode_dir/'observations'
+             directory.mkdir(exist_ok=True)
+-            np.savez_compressed(directory/f'{self.step_id:06d}.npz', **self.obs)
++            savez_record(directory/f'{self.step_id:06d}.npz', **self.obs)
+             if self.video_writer is None:
+                 import imageio.v2 as imageio
+                 self.video_writer = imageio.get_writer(str(self.output/'sensors.mp4'),
+--- a/hybrid_rollout/robodojo/robodojo_server/video_panel.py
++++ b/hybrid_rollout/robodojo/robodojo_server/video_panel.py
+@@ -54,7 +54,7 @@
+ 
+ def gripper_change(segment, action_index=0):
+     """Compare aligned proposal/executed commands, not measured gripper state."""
+-    proposed = segment.get('pi05_actions', [])
++    proposed = segment.get('openwam_actions', [])
+     executed = segment.get('executed_actions', [])
+     if segment.get('evaluation_method') == 'gpt_only' and 0 <= action_index < len(executed):
+         return 'GPT opening ' + '  '.join(f'{arm} {executed[action_index][i]:.2f}'
+@@ -62,8 +62,9 @@
+     if action_index < 0 or action_index >= min(len(proposed), len(executed)):
+         return 'Gripper: missing proposal/execution record'
+     return 'Gripper opening ' + '  '.join(
+-        f'{arm} {proposed[action_index][i]:.2f}→{executed[action_index][i]:.2f}'
+-        for arm, i in (('L', 6), ('R', 13)))
++        f'{arm} {proposed[action_index][i]:.2f}→{executed[action_index][j]:.2f}'
++        for arm, i, j in (('L', 7, 7 if len(executed[action_index]) == 16 else 6),
++                          ('R', 15, 15 if len(executed[action_index]) == 16 else 13)))
+ 
+ 
+ def correction_lines(segment, action_index=0):
+@@ -72,10 +73,10 @@
+     if mode == 'joint':
+         return ['GPT-authored absolute joint actions', gripper_change(segment, action_index),
+                 f'Executed {segment["executed_steps"]} / requested {response["steps"]} steps',
+-                'No pi05 inference or proposal']
++                'No openwam inference or proposal']
+     if mode == 'student':
+-        return ['Keep the original π0.5 action target',
+-                f'Execute {segment["executed_steps"]} / {len(segment.get("pi05_actions", [])) or 15} steps',
++        return ['Keep the original OpenWAM action target',
++                f'Execute {segment["executed_steps"]} / {len(segment.get("openwam_actions", [])) or 15} steps',
+                 'Shortened prefix; target unchanged' if segment['prefix_only'] else 'Full chunk; no GPT override']
+     if mode not in ('eef', 'edit'):
+         return ['No new action was executed']
+@@ -139,9 +140,9 @@
+         if override:
+             action_index = max(0, tick-1-segment['start_tick'])
+             self.text(draw, (790, 256), gripper_change(segment, action_index), 20, AMBER, width=442)
+-        badge = ('GPT correction' if override else 'π0.5 autonomous') if segment else 'Unconfirmed action source'
++        badge = ('GPT correction' if override else 'OpenWAM autonomous') if segment else 'Unconfirmed action source'
+         if tick == 0:
+-            badge = 'Next chunk · GPT correction' if override else 'Next chunk · π0.5'
++            badge = 'Next chunk · GPT correction' if override else 'Next chunk · OpenWAM'
+         if segment and segment.get('evaluation_method') == 'gpt_only':
+             badge = 'GPT-only · direct ' + segment['response']['mode'] + ' action'
+         final = tick == self.timeline.result.get('step_id')
+@@ -170,7 +171,7 @@
+         self.text(draw, (24, 401), f'Control {tick} / {end}', 18, MUTED)
+         direct = self.timeline.run.get('evaluation_method') == 'gpt_only'
+         self.text(draw, (275, 401), 'Cyan: GPT-only' if direct else 'Cyan: student', 18, CYAN)
+-        self.text(draw, (480, 401), 'No pi05' if direct else 'Amber: GPT correction', 18, AMBER)
++        self.text(draw, (480, 401), 'No openwam' if direct else 'Amber: GPT correction', 18, AMBER)
+         model = self.timeline.run.get('teacher_model', 'Model not recorded')
+         effort = self.timeline.run.get('teacher_reasoning_effort', 'Not recorded')
+         self.text(draw, (860, 401), f'{model} / {effort}', 18, MUTED, width=395)
+--- a/hybrid_rollout/robodojo/robodojo_server/video_panel_paper.py
++++ b/hybrid_rollout/robodojo/robodojo_server/video_panel_paper.py
+@@ -45,7 +45,7 @@
+         base=PROMPT_HEIGHT+observation_height
+         override=bool(segment and segment['codex_override'])
+         direct=self.timeline.run.get('evaluation_method')=='gpt_only'
+-        badge='GPT 6 Astra correction' if override else 'π0.5 action'
++        badge='GPT 6 Astra correction' if override else 'OpenWAM action'
+         if direct: badge='GPT 6 Astra Direct'
+         if not segment: badge='Unconfirmed action source'
+         if tick==self.timeline.result.get('step_id'): badge=terminal_badge(self.timeline.result)
+--- a/hybrid_rollout/robodojo/run_local.sh
++++ b/hybrid_rollout/robodojo/run_local.sh
+@@ -4,16 +4,16 @@
+ CODE_ROOT="${CODE_ROOT:-/workspace/eval-of-gpt-6-astra-as-policy}"
+ RUNTIME_ROOT="${RUNTIME_ROOT:-/mnt/rollout/robodojo_mixed_control}"
+ ROBODOJO_SOURCE="${ROBODOJO_SOURCE:-$RUNTIME_ROOT/src/RoboDojo}"
+-OPENPI_SOURCE="${OPENPI_SOURCE:-$ROBODOJO_SOURCE/XPolicyLab/policy/Pi_05/openpi}"
+-OPENPI_PYTHON="${OPENPI_PYTHON:-/mnt/rollout/openpi_mailbox_repro/openpi-venv/bin/python}"
++OPENWAM_SOURCE="${OPENWAM_SOURCE:-$RUNTIME_ROOT/repos/openwam}"
++OPENWAM_PYTHON="${OPENWAM_PYTHON:-$RUNTIME_ROOT/policy-venv/bin/python}"
+ ROBODOJO_PYTHON="${ROBODOJO_PYTHON:?Set an explicitly verified RoboDojo Isaac Sim 5.1 Python environment}"
+ CODEX_BIN="${CODEX_BIN:?Set the Codex executable}"
+ ROLLOUT_CODEX_HOME_DIR="${ROLLOUT_CODEX_HOME_DIR:?Run through cluster_entrypoint.sh with an isolated Codex home}"
+ ROLLOUT_CODEX_CONFIG="${ROLLOUT_CODEX_CONFIG:?Set the isolated rollout Codex config path}"
+ ROLLOUT_OPENAI_API_KEY_FILE="${ROLLOUT_OPENAI_API_KEY_FILE:-}"
+ ROLLOUT_AUTH_PROFILE="${ROLLOUT_AUTH_PROFILE:-galbot}"
+-export ROLLOUT_EVALUATION_METHOD="${ROLLOUT_EVALUATION_METHOD:-pi05_plus_gpt}"
+-[[ "$ROLLOUT_EVALUATION_METHOD" == pi05_plus_gpt || "$ROLLOUT_EVALUATION_METHOD" == gpt_only ]] || { echo 'Invalid evaluation method' >&2; exit 2; }
++export ROLLOUT_EVALUATION_METHOD="${ROLLOUT_EVALUATION_METHOD:-openwam_plus_gpt}"
++[[ "$ROLLOUT_EVALUATION_METHOD" == openwam_plus_gpt || "$ROLLOUT_EVALUATION_METHOD" == gpt_only ]] || { echo 'Invalid evaluation method' >&2; exit 2; }
+ RUN_ID="${RUN_ID:?Set a fresh run identifier}"
+ [[ "$RUN_ID" =~ ^[A-Za-z0-9_-]+$ ]] || { echo 'Invalid RUN_ID' >&2; exit 2; }
+ TASK="${TASK:-build_tower}"
+@@ -22,7 +22,7 @@
+ MAX_DECISIONS="${MAX_DECISIONS:-100}"
+ POLICY_PORT="${POLICY_PORT:-18830}"
+ SIM_PORT="${SIM_PORT:-19113}"
+-CHECKPOINT="${CHECKPOINT:-$RUNTIME_ROOT/checkpoints/RoboDojo-sim-arx_x5-joint-0/59999}"
++CHECKPOINT="${CHECKPOINT:-$RUNTIME_ROOT/checkpoints/OpenWAM-Alpha-Sim-RoboDojo}"
+ RESULTS_ROOT="${RESULTS_ROOT:-$RUNTIME_ROOT/results}"
+ ARCHIVE="$RESULTS_ROOT/$RUN_ID"
+ SNAPSHOT="$ARCHIVE/source_snapshot"
+@@ -31,8 +31,8 @@
+     "$ROBODOJO_SOURCE/Assets"; do
+     [[ -e "$input" ]] || { echo "Missing input: $input" >&2; exit 2; }
+ done
+-if [[ "$ROLLOUT_EVALUATION_METHOD" == pi05_plus_gpt ]]; then
+-    for input in "$OPENPI_PYTHON" "$CHECKPOINT/params" "$CHECKPOINT/assets/arx_x5_sim/norm_stats.json" "$OPENPI_SOURCE/src/openpi"; do
++if [[ "$ROLLOUT_EVALUATION_METHOD" == openwam_plus_gpt ]]; then
++    for input in "$OPENWAM_PYTHON" "$CHECKPOINT/checkpoint_step_60000.safetensors" "$CHECKPOINT/config.yaml" "$CHECKPOINT/normalization_stats.npy" "$CHECKPOINT/download-manifest.json" "$OPENWAM_SOURCE/openwam"; do
+         [[ -e "$input" ]] || { echo "Missing policy input: $input" >&2; exit 2; }
+     done
+ fi
+@@ -49,7 +49,7 @@
+     --shared-root "${ROLLOUT_SHARED_ROOT:-$RUNTIME_ROOT}"
+ [[ "$RESULTS_ROOT" == /mnt/* ]] || { echo 'RESULTS_ROOT must be an absolute path below /mnt' >&2; exit 2; }
+ "$ROBODOJO_PYTHON" -c 'import importlib.metadata as m; assert m.version("isaacsim").startswith("5.1."), "RoboDojo checkout requires Isaac Sim 5.1; do not silently reuse RoboLab 5.0"'
+-"$ROBODOJO_PYTHON" -c 'import socket,sys; ports=[int(p) for p in sys.argv[1:]]; assert len(set(ports))==len(ports); sockets=[socket.socket() for _ in ports]; [s.bind(("127.0.0.1",p)) for s,p in zip(sockets,ports)]' "$POLICY_PORT" "$SIM_PORT"
++"$ROBODOJO_PYTHON" -c 'import socket,sys; ports=[int(p) for p in sys.argv[1:]]; assert len(set(ports))==len(ports); sockets=[socket.socket() for _ in ports]; [s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1) for s in sockets]; [s.bind(("127.0.0.1",p)) for s,p in zip(sockets,ports)]' "$POLICY_PORT" "$SIM_PORT"
+ mkdir -p "$RESULTS_ROOT"
+ mkdir "$ARCHIVE" || { echo "Refusing existing/reserved archive: $ARCHIVE" >&2; exit 2; }
+ mkdir -p "$SNAPSHOT" "$ARCHIVE/logs" "$ARCHIVE/sim"
+@@ -99,6 +99,9 @@
+ trap 'exit 130' INT
+ trap 'exit 143' TERM
+ cp -a "$CODE_ROOT/hybrid_rollout" "$SNAPSHOT/hybrid_rollout"
++cp -a "$CODE_ROOT/astra_openwam" "$SNAPSHOT/astra_openwam"
++cp -a "$CODE_ROOT/licenses" "$SNAPSHOT/licenses"
++cp "$CODE_ROOT/LICENSE" "$SNAPSHOT/LICENSE"
+ if [[ -f "$CODE_ROOT/source_manifest.json" ]]; then
+     cp "$CODE_ROOT/source_manifest.json" "$ARCHIVE/submitted_source_manifest.json"
+ fi
+@@ -108,24 +111,24 @@
+     cp "${ROLLOUT_CASE_FILE:?}" "$ARCHIVE/evaluation_case.json"
+ fi
+ git -C "$ROBODOJO_SOURCE" rev-parse HEAD > "$ARCHIVE/robodojo_head.txt"
+-if [[ "$ROLLOUT_EVALUATION_METHOD" == pi05_plus_gpt ]]; then
+-    git -C "$OPENPI_SOURCE" rev-parse HEAD > "$ARCHIVE/openpi_head.txt"
++if [[ "$ROLLOUT_EVALUATION_METHOD" == openwam_plus_gpt ]]; then
++    git -C "$OPENWAM_SOURCE" rev-parse HEAD > "$ARCHIVE/openwam_head.txt"
+ fi
+ export PYTHONUNBUFFERED=1
+ export TASK_ROOT="${TASK_ROOT:-$RUNTIME_ROOT}"
+-export OPENPI_DATA_HOME="${OPENPI_DATA_HOME:-/mnt/rollout/openpi_mailbox_repro/openpi-cache}"
+-export CODE_ROOT RUNTIME_ROOT RESULTS_ROOT ROBODOJO_SOURCE OPENPI_SOURCE OPENPI_PYTHON
++export OPENWAM_DATA_HOME="${OPENWAM_DATA_HOME:-$RUNTIME_ROOT/cache/openwam}"
++export CODE_ROOT RUNTIME_ROOT RESULTS_ROOT ROBODOJO_SOURCE OPENWAM_SOURCE OPENWAM_PYTHON
+ export ROBODOJO_PYTHON CODEX_BIN RUN_ID TASK SEED EVAL_SEED POLICY_PORT SIM_PORT CHECKPOINT
+ export POLICY_GPU="${POLICY_GPU:-0}" SIM_GPU="${SIM_GPU:-1}" MAX_DECISIONS
+ env PYTHONPATH="$SNAPSHOT" "$ROBODOJO_PYTHON" -m hybrid_rollout.robodojo.runtime_manifest \
+     --archive "$ARCHIVE" --config "$ROLLOUT_CODEX_CONFIG" --output "$ARCHIVE/launch_manifest.json"
+-if [[ "$ROLLOUT_EVALUATION_METHOD" == pi05_plus_gpt ]]; then
++if [[ "$ROLLOUT_EVALUATION_METHOD" == openwam_plus_gpt ]]; then
+ (
+     cd "$SNAPSHOT"
+     exec env CUDA_VISIBLE_DEVICES="${POLICY_GPU:-0}" XLA_PYTHON_CLIENT_PREALLOCATE=false \
+-        PYTHONPATH="$SNAPSHOT:$OPENPI_SOURCE/src:$OPENPI_SOURCE/packages/openpi-client/src" \
+-        "$OPENPI_PYTHON" -m hybrid_rollout.robodojo.pi05_server.server \
+-        --checkpoint "$CHECKPOINT" --port "$POLICY_PORT" --identity-output "$ARCHIVE/policy_identity.json"
++        PYTHONPATH="$SNAPSHOT:$OPENWAM_SOURCE" \
++        "$OPENWAM_PYTHON" -m astra_openwam.policy_server \
++        --checkpoint "$CHECKPOINT" --port "$POLICY_PORT" --identity-output "$ARCHIVE/policy_identity.json" --seed "${OPENWAM_POLICY_SEED:-42}"
+ ) > "$ARCHIVE/logs/policy.log" 2>&1 &
+ policy_pid=$!
+ fi
+@@ -160,9 +163,9 @@
+     auth_environment=()
+     controller_args=(--evaluation-method "$ROLLOUT_EVALUATION_METHOD")
+     controller_pythonpath="$SNAPSHOT"
+-    if [[ "$ROLLOUT_EVALUATION_METHOD" == pi05_plus_gpt ]]; then
++    if [[ "$ROLLOUT_EVALUATION_METHOD" == openwam_plus_gpt ]]; then
+         controller_args+=(--checkpoint "$CHECKPOINT" --student-port "$POLICY_PORT")
+-        controller_pythonpath="$SNAPSHOT:$OPENPI_SOURCE/packages/openpi-client/src"
++        controller_pythonpath="$SNAPSHOT"
+     fi
+     if [[ "$ROLLOUT_AUTH_PROFILE" == galbot || "$ROLLOUT_AUTH_PROFILE" == koozhan ]]; then
+         codex_api_key="$(<"$ROLLOUT_OPENAI_API_KEY_FILE")"
+--- a/hybrid_rollout/robodojo/runtime_manifest.py
++++ b/hybrid_rollout/robodojo/runtime_manifest.py
+@@ -16,10 +16,10 @@
+     'ROLLOUT_EVALUATION_METHOD', 'ROLLOUT_PHASE1_CERTIFICATE',
+     'ROLLOUT_AUTH_PROFILE', 'ROLLOUT_CODEX_STATE_DIR', 'ROLLOUT_GATEWAY_NO_PROXY',
+     'CODE_ROOT', 'RUNTIME_ROOT', 'RESULTS_ROOT', 'ROBODOJO_SOURCE',
+-    'OPENPI_SOURCE', 'OPENPI_PYTHON', 'ROBODOJO_PYTHON', 'CODEX_BIN',
++    'OPENWAM_SOURCE', 'OPENWAM_PYTHON', 'ROBODOJO_PYTHON', 'CODEX_BIN',
+     'RUN_ID', 'TASK', 'SEED', 'POLICY_PORT', 'SIM_PORT', 'CHECKPOINT',
+     'POLICY_GPU', 'SIM_GPU', 'SIM_EXTRA_PYTHONPATH', 'TASK_ROOT',
+-    'OPENPI_DATA_HOME', 'MAX_DECISIONS', 'DEBUG_VIDEO_FONT',
++    'OPENWAM_DATA_HOME', 'ROBODOJO_RECORD_COMPRESSION', 'OPENWAM_POLICY_SEED', 'MAX_DECISIONS', 'DEBUG_VIDEO_FONT',
+     'DAGGER_NVIDIA_RUNTIME', 'DAGGER_SYSROOT', 'LD_LIBRARY_PATH',
+     'ROLLOUT_SHARED_ROOT', 'ROLLOUT_EXPERIMENT_ID', 'ROLLOUT_REPLICA_ID',
+     'ROLLOUT_ATTEMPT', 'ROLLOUT_IMAGE_REF', 'ROLLOUT_SCHEDULER_JOB_ID',
+@@ -47,13 +47,13 @@
+     if forbidden:
+         raise ValueError(f'Secret-like environment names cannot be archived: {forbidden}')
+     snapshot = str(Path(archive).resolve()/'source_snapshot')
+-    openpi = values.get('OPENPI_SOURCE', '')
++    openwam = values.get('OPENWAM_SOURCE', '')
+     robodojo = values.get('ROBODOJO_SOURCE', '')
+     derived = {
+         'policy': {
+             'CUDA_VISIBLE_DEVICES': values.get('POLICY_GPU', '0'),
+             'XLA_PYTHON_CLIENT_PREALLOCATE': 'false',
+-            'PYTHONPATH': f'{snapshot}:{openpi}/src:{openpi}/packages/openpi-client/src',
++            'PYTHONPATH': f'{snapshot}:{openwam}',
+         },
+         'simulator': {
+             'CUDA_VISIBLE_DEVICES': values.get('SIM_GPU', '1'),
+@@ -74,7 +74,7 @@
+                                else 'present only in the Codex controller process; value not archived'),
+             'NO_PROXY': '127.0.0.1,localhost,' + values.get('ROLLOUT_GATEWAY_NO_PROXY', 'gateway.example.invalid'),
+             'no_proxy': '127.0.0.1,localhost,' + values.get('ROLLOUT_GATEWAY_NO_PROXY', 'gateway.example.invalid'),
+-            'PYTHONPATH': f'{snapshot}:{openpi}/packages/openpi-client/src',
++            'PYTHONPATH': snapshot,
+         },
+     }
+     if method == 'gpt_only':
+--- a/hybrid_rollout/robodojo/skill/SKILL.md
++++ b/hybrid_rollout/robodojo/skill/SKILL.md
+@@ -1,11 +1,11 @@
+ ---
+ name: robodojo-hybrid-rollout
+-description: Control one authorized RoboDojo dual-ARX-X5 episode with RoboDojo-finetuned pi05 proposals, outcome/intent review and bounded EEF corrections, recording observations and trajectories. Not for RoboLab.
++description: Control one authorized RoboDojo dual-ARX-X5 episode with RoboDojo-finetuned openwam proposals, outcome/intent review and bounded EEF corrections, recording observations and trajectories. Not for RoboLab.
+ ---
+ 
+ # RoboDojo hybrid policy agent
+ 
+-Operate as the autonomous GPT + pi05 policy, not a JSON-only reviewer. The
++Operate as the autonomous GPT + openwam policy, not a JSON-only reviewer. The
+ dedicated Codex thread uses the explicitly selected GPT-6/xhigh backend and retains normal file/image
+ inspection, code execution, calculation and planning tools. Three blocking
+ services are additional tools, not your complete toolset. The implementation
+@@ -29,7 +29,7 @@
+ `requires_arm_return=true`, completion also requires both arms near their
+ episode-start end-effector positions and orientations. After the object-level
+ goal, release, safely retract and return, reserving steps for this finish;
+-pi05's appropriate withdrawal/return motion is task-aligned, not a wrong intent.
++openwam's appropriate withdrawal/return motion is task-aligned, not a wrong intent.
+ Arm return never means resetting the simulator. `make_kong` instead checks its
+ tile-handling sequence; do not assume missing arm return explains non-success.
+ 
+@@ -40,21 +40,21 @@
+ 1. Call `robodojo_start` for the requested task with its explicit fresh output
+    directory. It resets once and returns head/left-wrist/right-wrist RGB,
+    14D proprio, both measured EEF poses, file paths and `next_call`.
+-2. Call `pi05_infer` using the latest observation path and a fresh output
+-   directory. Preserve the original task instruction. Read the new 50×14
++2. Call `openwam_infer` using the latest observation path and a fresh output
++   directory. Preserve the original task instruction. Read the new 32×16
+    proposal and both-arm robot-only FK trajectory. FK is not a simulation of
+    contact, grasping, objects or future success.
+ 3. Assess the last execution and the new proposal separately using the gate.
+    Call `robodojo_execute` with the exact proposal path, matching `request_id`,
+    structured assessment/decision/reason and fresh output directory.
+ 4. Inspect returned images and proprio; repeat from step 2. Every execute
+-   needs a new pi05 inference. Native analysis tools may run between services.
++   needs a new openwam inference. Native analysis tools may run between services.
+ 
+ Use exact paths in `next_call`. Image attachments are head, left wrist, right
+ wrist; the proposal reuses that observation without attaching it again.
+ Attachments may be teacher-only downscaled previews (`codex_preview` gives their
+ saved path and dimensions). `images[].path` always remains the original image:
+-open it with native image tools when fine detail is needed. pi05 inputs and raw
++open it with native image tools when fine detail is needed. openwam inputs and raw
+ recordings are not resized.
+ History arrives incrementally in the persistent conversation and remains in
+ `history.json`; reopen observations/NPZ/IK diagnostics freely. Do not rewrite
+@@ -62,11 +62,11 @@
+ 
+ ## Decisions
+ 
+-pi05 is already fine-tuned on RoboDojo task data. Its broad action sequence is
++openwam is already fine-tuned on RoboDojo task data. Its broad action sequence is
+ usually useful, but local steps may still be wrong; judge execution precision
+ and the need for correction from the current observations.
+ 
+-- `student`: execute 1–15 original steps from the fresh H50 proposal.
++- `student`: execute 1–15 original steps from the fresh H32 proposal.
+ - `edit`: 1–5 steps, with separate `left`/`right` position/rotation offsets and
+   gripper keep/open/closed. Limits per arm: 5 cm and 0.35 rad. Zero/keep retains
+   that arm's student trajectory, rather than freezing it.
+--- a/hybrid_rollout/robodojo/skill/context/eef_control.md
++++ b/hybrid_rollout/robodojo/skill/context/eef_control.md
+@@ -10,16 +10,19 @@
+ ## Differences from RoboLab (do not use Panda geometry here)
+ 
+ - `robot_profile=robodojo`, simulator RoboDojo, robot dual ARX X5.
+-- Policy is the official RoboDojo-finetuned OpenPI/JAX checkpoint, configuration
+-  `pi05_base_aloha_full_sim_arx-x5_seed_0`, normalizer `arx_x5_sim`.
++- Policy is the official RoboDojo-finetuned OpenWAM/PyTorch checkpoint, configuration
++  `OpenWAM-Alpha-Sim-RoboDojo`; use its packaged normalization statistics.
+ - Three image attachments: `cam_high`, `cam_left_wrist`, `cam_right_wrist`.
+   Compare all relevant views; native analysis tools can crop and reopen them.
+-- Proprio/action order is `[left joints 1..6, left opening, right joints 1..6,
+-  right opening]`. Native opening is continuous **0=closed, 1=open**. The
++- Proprio remains `[left joints 1..6, left opening, right joints 1..6, right opening]`.
++  Student commands are `[left xyz3, quaternion wxyz4, opening, right xyz3, quaternion wxyz4, opening]`.
++  These 16 values are native EEF targets, not joint targets. OpenWAM predicts EEF20
++  in per-arm base frames; the host converts it using the official dual-X5 calibration.
++  Native opening is continuous **0=closed, 1=open**. The
+   student proposal retains continuous opening (only clipped to native [0,1]).
+   Native gripper proprio is the last controller opening command, not a
+   measured finger gap or proof of grasp. Arm joints and EEF poses are measured.
+-- Every inference returns all **50** target steps and both-arm FK poses.
++- Every inference returns all **32** native EEF target steps. Current robot FK is checked, but target arrival is not guaranteed.
+   `student` still executes only 1–15 steps before observing/inferencing again.
+   `edit`/`eef` retain the 1–5-step limit. Remaining proposal suffix is discarded.
+ - `current_eef` has `left` and `right`; each trajectory row has both arms.
+@@ -37,7 +40,7 @@
+   it does NOT freeze that arm. `keep` preserves the continuous proposal opening.
+ - EEF corrections use local damped least-squares IK, recomputed after every
+   real control ACK. Task increments <=2 cm/0.1 rad and each joint increment
+-  <=0.05 rad. No cuRobo planning or teleportation. A requested target is not
++  <=0.05 rad. Astra corrections do not use cuRobo or teleportation; OpenWAM student targets use native RoboDojo EE control. A requested target is not
+   evidence of arrival/contact; inspect after-execution RGB and measured pose.
+ - Do not reuse DROID's +0.1311 m pad offset. X5's native config reports
+   `gripper_bias=0.145` but that scalar alone does not establish an offset axis;
+--- a/hybrid_rollout/robodojo/skill/context/teacher_context.md
++++ b/hybrid_rollout/robodojo/skill/context/teacher_context.md
+@@ -2,7 +2,7 @@
+ 
+ The goal is one recorded RoboDojo rollout of the task requested at launch, controlled
+ by a persistent GPT-6/xhigh agent on the selected backend and the official RoboDojo-finetuned
+-OpenPI/JAX pi05 policy. Derive the exact objective from the native instruction
++OpenWAM/PyTorch openwam policy. Derive the exact objective from the native instruction
+ and visible observations, not a hard-coded task script. This rollout does not train the student.
+ 
+ The control method is copied from the successful RoboLab full-agent pipeline:
+--- a/hybrid_rollout/robodojo/skill/run.py
++++ b/hybrid_rollout/robodojo/skill/run.py
+@@ -14,7 +14,7 @@
+ from ..io import InputError, write_json
+ from ..prompt_context import CONTEXT_VERSION
+ from ..settings import MODEL, EFFORT, PROVIDER, DEFAULT_CODEX_IMAGE_MAX_EDGE
+-from ..robodojo_server.client import RoboDojoTools
++from astra_openwam.tools import OpenWAMTools as RoboDojoTools
+ from ..method import evaluation_method
+ from .schema import _obj, response_schema, direct_response_schema
+ from .transport import StdioAppServer
+@@ -90,7 +90,7 @@
+         })
+ 
+ 
+-def tool_specs(method='pi05_plus_gpt'):
++def tool_specs(method='openwam_plus_gpt'):
+     string = {'type': 'string'}
+     def spec(name, description, **properties):
+         return dict(type='function', name=name, description=description,
+@@ -100,13 +100,13 @@
+                      task=string, output_dir=string),
+                 spec('robodojo_act', 'Blocking: execute GPT-authored bounded dual-arm EEF targets '
+                      '(1-5 steps), then return RGB/proprio and native outcome. '
+-                     'No pi05 inference, proposals or direct joint-action commands exist.',
++                     'No openwam inference, proposals or direct joint-action commands exist.',
+                      observation_path=string, response=direct_response_schema(), output_dir=string)]
+     return [
+         spec('robodojo_start', 'Blocking: start the requested RoboDojo episode; save and return current RGB/proprio.',
+              task=string, output_dir=string),
+-        spec('pi05_infer', 'Blocking: infer pi05 once from the latest observation; save chunk and return full robot-only FK. '
+-             'action_diagnostics provides shape, finiteness, opening ranges and maximum successive joint step. '
++        spec('openwam_infer', 'Blocking: infer openwam once from the latest observation; save chunk and return the full native EEF target trajectory. '
++             'action_diagnostics provides shape, finiteness, opening ranges and successive pose changes. '
+              'Use these for routine arithmetic; native tools remain available for independent or additional checks. '
+              'Diagnostics are not a safety or gate verdict: perform the unchanged visual and intent assessment.',
+              observation_path=string, output_dir=string),
+@@ -132,7 +132,7 @@
+ 
+ class CodexPolicy:
+     def __init__(self, workspace, codex, *, timeout=900, transport_factory=StdioAppServer,
+-                 method='pi05_plus_gpt'):
++                 method='openwam_plus_gpt'):
+         self.method = evaluation_method(method)
+         direct = self.method == 'gpt_only'
+         skill_root = SKILL_ROOT.parent/'robodojo-gpt-only-rollout' if direct else SKILL_ROOT
+@@ -289,7 +289,7 @@
+                 write_json(self.workspace/f'call_{call_index:04d}_request.json', audit)
+                 handlers = (dict(robodojo_start=rollout.start, robodojo_act=rollout.act)
+                     if self.method == 'gpt_only' else
+-                    dict(robodojo_start=rollout.start, pi05_infer=rollout.infer, robodojo_execute=rollout.execute))
++                    dict(robodojo_start=rollout.start, openwam_infer=rollout.infer, robodojo_execute=rollout.execute))
+                 try:
+                     if isinstance(arguments, str):
+                         try:
+@@ -314,7 +314,7 @@
+                 # replying. A failed transport reply must not repeat a handler.
+                 write_json(self.workspace/f'call_{call_index:04d}_result.json', packet)
+                 self.transport.reply(event['id'], dict(success=success,
+-                    contentItems=content_items(packet, images=success and name != 'pi05_infer',
++                    contentItems=content_items(packet, images=success and name != 'openwam_infer',
+                                                max_image_edge=self.image_max_edge)))
+                 call_index += 1
+                 print(json.dumps(dict(event='tool_done', tool=name, step_id=rollout.tick,
+@@ -403,7 +403,7 @@
+     parser.add_argument('--output', type=Path, required=True)
+     parser.add_argument('--task', required=True)
+     parser.add_argument('--checkpoint', type=Path)
+-    parser.add_argument('--evaluation-method', default=evaluation_method(), choices=('pi05_plus_gpt','gpt_only'))
++    parser.add_argument('--evaluation-method', default=evaluation_method(), choices=('openwam_plus_gpt','gpt_only'))
+     parser.add_argument('--codex', required=True)
+     parser.add_argument('--sim-port', type=int, default=19113)
+     parser.add_argument('--student-port', type=int, default=18830)
+@@ -417,11 +417,11 @@
+         raise KeyboardInterrupt('Stopping only this owned rollout and Codex process')
+     signal.signal(signal.SIGTERM, terminate)
+     try:
+-        if args.evaluation_method == 'pi05_plus_gpt':
++        if args.evaluation_method == 'openwam_plus_gpt':
+             if args.checkpoint is None:
+                 raise ValueError('Hybrid evaluation requires an explicit checkpoint')
+-            from ..pi05_server.client import Pi05Client
+-            student = Pi05Client(args.student_port, args.checkpoint)
++            from astra_openwam.client import OpenWAMClient
++            student = OpenWAMClient(args.student_port, args.checkpoint)
+         worker = CodexPolicy(args.output/'codex_workspace', args.codex, method=args.evaluation_method)
+         if args.evaluation_method == 'gpt_only':
+             from ..robodojo_server.gpt_only_client import GPTOnlyTools
+--- a/hybrid_rollout/robodojo/skill/workspace.py
++++ b/hybrid_rollout/robodojo/skill/workspace.py
+@@ -7,7 +7,7 @@
+ from ..io import write_json
+ 
+ 
+-def prepare_workspace(audit, skill_root, *, method='pi05_plus_gpt'):
++def prepare_workspace(audit, skill_root, *, method='openwam_plus_gpt'):
+     audit, skill_root = Path(audit).resolve(), Path(skill_root).resolve()
+     agent = audit/'agent'
+     agent.mkdir()
+@@ -40,7 +40,7 @@
+         '# RoboDojo policy agent workspace\n\n'
+         'You are the autonomous policy agent, not a JSON-only reviewer. Use your normal '
+         'Codex tools to inspect files and images, write/run code, calculate poses, and '
+-        'maintain notes. Three additional tools connect you to RoboDojo/pi05; they are '
++        'maintain notes. Three additional tools connect you to RoboDojo/openwam; they are '
+         'not your entire toolset.\n\n'
+         'Read context/teacher_context.md for project knowledge and context/eef_control.md '
+         'for the robot contract. workspace.json supplies the Python interpreter and '
+@@ -54,8 +54,8 @@
+         'tools. Inspect recorded RGB/proprio/actions freely; private simulator scene '
+         'snapshots/object truth are not planning inputs.\n')
+     if direct:
+-        instructions = instructions.replace('Three additional tools connect you to RoboDojo/pi05',
+-            'Two additional tools connect you to RoboDojo (no pi05)')
++        instructions = instructions.replace('Three additional tools connect you to RoboDojo/openwam',
++            'Two additional tools connect you to RoboDojo (no openwam)')
+         instructions = instructions.replace('injected rollout skill and unchanged gate', 'injected GPT-only rollout skill')
+     (agent/'AGENTS.md').write_text(instructions)
+     (agent/'NOTES.md').write_text(

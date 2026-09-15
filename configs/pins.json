@@ -1,0 +1,27 @@
+{
+  "openwam": {
+    "url": "https://github.com/OpenWAM-Official/OpenWAM.git",
+    "commit": "a8992b613fdb5b1c4649f53b3a914379c49e3892"
+  },
+  "gpt_as_policy": {
+    "url": "https://github.com/anonymous-report-421/GPT-as-Policy.git",
+    "commit": "2d6ead76ad6abd368d4b0a231ce96fc653ccce9b"
+  },
+  "robodojo": {
+    "url": "https://github.com/RoboDojo-Benchmark/RoboDojo.git",
+    "commit": "ee67a1468510da7624a089164402359f2afc72c8"
+  },
+  "checkpoint": {
+    "repo_id": "OpenWAM/OpenWAM-Alpha-Sim-RoboDojo",
+    "revision": "2c1302294e3ba8319bbdb2c803b7a27de9292d03",
+    "filename": "checkpoint_step_60000.safetensors"
+  },
+  "reference_adapter": {
+    "url": "https://github.com/XPolicyLab/XPolicyLab",
+    "commit": "fa431ecd893ee706883e64fe5fe1464ec8cd928d",
+    "path": "policy/OpenWAM/model.py"
+  },
+  "codex_cli": "0.153.4",
+  "isaac_sim": "5.1.0",
+  "torch": "2.7.1+cu128"
+}
