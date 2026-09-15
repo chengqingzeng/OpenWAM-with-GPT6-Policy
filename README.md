@@ -4,6 +4,8 @@ GPT‑6 Astra reviews proposals from **OpenWAM‑Alpha‑Sim‑RoboDojo** and se
 
 **Research integration for simulation.** It does not run a physical robot, train a model, or establish a leaderboard score. See [validation](docs/validation.md) for the exact checks performed.
 
+**Verified deployment:** isolated policy environment, two real GPU proposals, and a real Astra + RoboDojo smoke with 2 decisions / 30 controls. Whole-GPU sampled peak: **32.93 GiB** on the user’s expanded-memory 4090. The smoke stopped at its decision budget; it is not a task-success result.
+
 ## Control loop
 
 ```mermaid
@@ -45,11 +47,12 @@ The simulator stays in its existing Isaac environment. Do not install OpenWAM in
 git clone https://github.com/chengqingzeng/OpenWAM-with-GPT6-Policy.git
 cd OpenWAM-with-GPT6-Policy
 export OPENWAM_RUNTIME=/absolute/path/openwam-gpt6-runtime
+export ROBODOJO_BASE=/absolute/path/robodojo-repro
 bash scripts/setup_server.sh --python /absolute/path/python3.11 \
   --runtime "$OPENWAM_RUNTIME"
 ```
 
-This creates `.venv`, fetches exact source revisions, installs the policy dependencies, records `policy-environment.freeze.txt`, and downloads/hash-verifies the checkpoint. HTTP(S) proxy settings are inherited. The optional `--wait-for /path/to/measurement/state.json` defers installation until an existing measurement exits its `running` state. Installation does not launch inference or claim GPU capacity.
+This creates `.venv`, fetches exact source revisions, installs the policy dependencies, records `policy-environment.freeze.txt`, and downloads/hash-verifies the checkpoint. HTTP(S) proxy settings are inherited. The optional `--wait-for /path/to/measurement/state.json` defers installation until an existing measurement exits its `running` state. If the host lacks `nvcc`, installation reuses the existing CUDA 12.8 container for DeepSpeed metadata/build checks while writing only the isolated policy venv. No training extensions are built (`DS_BUILD_OPS=0`). A host-compatible `cryptography` wheel is selected after the container installation, since the container has newer glibc than Ubuntu 20.04. `requirements-policy.lock.txt` pins the tested dependency versions. Installation does not launch inference or claim GPU capacity.
 
 For CPU checks alone:
 
@@ -79,13 +82,13 @@ bash scripts/container.sh bash "$PWD/scripts/run_case.sh" \
 
 The final argument is the decision budget. Use **100** for the documented reference setting. Use a fresh experiment ID and an unused case for benchmark work; the upstream ledger rejects duplicate reservations. The native 60-case panel is frozen from the supplied assets and verified before execution. This command runs one selected case, not the full panel.
 
-The container uses host networking for loopback RPC, GPU 0 for both processes, policy port **18850**, simulator port **19513**, and `/mnt/rollout/openwam_gpt6` for writable output. It renders the native `curobo_tmp.yml` path placeholders in an isolated X5 asset copy and reuses Isaac extension caches in an isolated writable container home. Robot/control parameters are unchanged. Its assets and existing deployment mount are read-only; only the shared managed-auth directory is writable for its normal login refresh and lease. It never stops unrelated jobs.
+The container uses host networking for loopback RPC, GPU 0 for both processes, policy port **18850**, simulator port **19513**, and `/mnt/rollout/robodojo_mixed_control` for writable output. This preserves the baseline managed-profile trust-path contract inside this container; the bind mount still points exclusively to the new `$OPENWAM_RUNTIME` host directory. It renders the native `curobo_tmp.yml` path placeholders in an isolated X5 asset copy and reuses Isaac extension caches in an isolated writable container home. Robot/control parameters are unchanged. Its assets and existing deployment mount are read-only; only the shared managed-auth directory is writable for its normal login refresh and lease. It never stops unrelated jobs.
 
 ## Evidence and outputs
 
 Archives under `$OPENWAM_RUNTIME/results/` include source and launch manifests, checkpoint identity, frozen case, original observation NPZs, original EEF20 and converted EEF16 proposals, Astra assessments, executed commands with measured joint14 states, native outcome and videos. Sensor recording uses lossless ZIP level 1; no observation is dropped or resized before policy input. Audit-video rendering occurs during finalization.
 
-An offline policy check on an existing recorded observation is available:
+An offline policy check accepts a native `sim/<episode-id>/observations/*.npz` recording, including its instruction:
 
 ```bash
 .venv/bin/python scripts/smoke_policy.py \

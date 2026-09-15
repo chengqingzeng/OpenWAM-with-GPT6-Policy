@@ -140,3 +140,15 @@ def test_mixed_command_recording_keeps_dimensions_and_gripper_indices(tmp_path):
     assert 'L 0.25→0.80' in gripper_change(correction,0)
     assert 'R 0.75→0.90' in gripper_change(correction,0)
     assert timeline.at(1)[0]['decision']==0 and timeline.at(2)[0]['decision']==1
+
+
+def test_decision_receipt_labels_openwam_and_32_step_horizon():
+    from hybrid_rollout.robodojo.robodojo_server.decision_log import decision_event
+    response=dict(mode='student',request_id='request',reason='Aligned approach',steps=15)
+    event=decision_event(episode_id='episode',step_id=0,decision=0,
+                         prediction_id='prediction',response=response)
+    assert event['evaluation_method']=='openwam_plus_gpt'
+    assert event['prefix_only'] is True
+    response['steps']=32
+    assert decision_event(episode_id='episode',step_id=0,decision=0,
+        prediction_id='prediction',response=response)['prefix_only'] is False

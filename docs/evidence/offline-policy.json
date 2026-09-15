@@ -1,0 +1,93 @@
+{
+  "metadata": {
+    "checkpoint": "OpenWAM/OpenWAM-Alpha-Sim-RoboDojo",
+    "checkpoint_sha256": "78ca4ef5d2f6c8fa877bcae8b40c36b3d8700547fd5a708b472c4564e5f40abb",
+    "config": "OpenWAM-Alpha-Sim-RoboDojo/eef20",
+    "backend": "OpenWAM/PyTorch",
+    "config_sha256": "8b05f4365dc020daf07c9fce1f61b653a7f6d16053baf1e7238b7b48403c67ca",
+    "normalization_sha256": "48bc266e0390f341c86dc3712501788c2bfdb75e44f005e41cc3e5820ace36a3",
+    "action_horizon": 32,
+    "action_dim": 16,
+    "decoded_action_dim": 20,
+    "model_action_dim": 80,
+    "inferences": 2,
+    "seed": 42,
+    "calibration": {
+      "schema_version": 1,
+      "embodiment": "arx_x5",
+      "endpoint": {
+        "link_name": "link6",
+        "pose_frame_contract": "rigid_terminal_arm_frame_independent_of_gripper_motion"
+      },
+      "arms": {
+        "left": {
+          "base_pos_relative_to_env_origin": [
+            -0.3,
+            -0.45,
+            0.765
+          ],
+          "base_quat_wxyz": [
+            0.7071067811865476,
+            0.0,
+            0.0,
+            0.7071067811865476
+          ]
+        },
+        "right": {
+          "base_pos_relative_to_env_origin": [
+            0.3,
+            -0.45,
+            0.765
+          ],
+          "base_quat_wxyz": [
+            0.7071067811865476,
+            0.0,
+            0.0,
+            0.7071067811865476
+          ]
+        }
+      }
+    },
+    "denoise_steps": 10,
+    "denoise_mode": "sync",
+    "compile": false,
+    "dit_cache": false,
+    "decode_video": false,
+    "gripper_semantics": "continuous_0_closed_1_open",
+    "inference_api": "official_openwam.engine.generate_single_sample"
+  },
+  "load_seconds": 68.16673129000083,
+  "coordinate_roundtrip_passed": true,
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "gpu_total_bytes": 50854952960,
+  "torch_version": "2.7.1+cu128",
+  "inferences": [
+    {
+      "inference_seconds": 1.221504154998911,
+      "peak_allocated_bytes": 25096087552,
+      "peak_reserved_bytes": 25339887616,
+      "native_shape": [
+        32,
+        16
+      ],
+      "raw_shape": [
+        32,
+        20
+      ]
+    },
+    {
+      "inference_seconds": 0.5605391039989627,
+      "peak_allocated_bytes": 25006799872,
+      "peak_reserved_bytes": 25339887616,
+      "native_shape": [
+        32,
+        16
+      ],
+      "raw_shape": [
+        32,
+        20
+      ]
+    }
+  ],
+  "scope": "Two offline proposals on one recorded observation; no Astra call, no simulator actions, not a success-rate result"
+}

@@ -31,9 +31,9 @@ exec sudo docker run --rm --gpus all --network host --shm-size 16g \
   --env "ROLLOUT_AUTH_PROFILE=${ROLLOUT_AUTH_PROFILE:-codex_a_2}" \
   --mount "type=bind,src=$OPENWAM_RUNTIME/container-home,dst=/home/ubuntu" \
   --mount "type=bind,src=$repo,dst=$repo" \
-  --mount "type=bind,src=$OPENWAM_RUNTIME,dst=/mnt/rollout/openwam_gpt6" \
+  --mount "type=bind,src=$OPENWAM_RUNTIME,dst=/mnt/rollout/robodojo_mixed_control" \
   --mount "type=bind,src=$ROBODOJO_BASE,dst=$ROBODOJO_BASE,readonly" \
-  --mount "type=bind,src=$ROBODOJO_BASE/private/auth_profiles,dst=/mnt/rollout/openwam_gpt6/private/auth_profiles" \
+  --mount "type=bind,src=$ROBODOJO_BASE/private/auth_profiles,dst=/mnt/rollout/robodojo_mixed_control/private/auth_profiles" \
   --mount "type=bind,src=$OPENWAM_RUNTIME/cache/isaac-kit/data,dst=/root/miniconda3/envs/RoboDojo/lib/python3.11/site-packages/isaacsim/kit/data" \
   --mount "type=bind,src=$OPENWAM_RUNTIME/cache/isaac-kit/cache,dst=/root/miniconda3/envs/RoboDojo/lib/python3.11/site-packages/isaacsim/kit/cache" \
   --mount "type=bind,src=$OPENWAM_RUNTIME/cache/isaac-kit/logs,dst=/root/miniconda3/envs/RoboDojo/lib/python3.11/site-packages/isaacsim/kit/logs" \

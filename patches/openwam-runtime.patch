@@ -245,6 +245,20 @@
              self.segments.append(segment)
              previous_end = end
          self.starts = [s['start_tick'] for s in self.segments]
+--- a/hybrid_rollout/robodojo/robodojo_server/decision_log.py
++++ b/hybrid_rollout/robodojo/robodojo_server/decision_log.py
+@@ -17,9 +17,9 @@
+         step_id=step_id, decision=decision, prediction_id=prediction_id,
+         request_id=response['request_id'], mode=mode, reason=response['reason'],
+         requested_steps=response['steps'],
+-        evaluation_method=response.get('evaluation_method', 'pi05_plus_gpt'),
++        evaluation_method=response.get('evaluation_method', 'openwam_plus_gpt'),
+         codex_override=mode in ('edit', 'eef') and response.get('evaluation_method') != 'gpt_only',
+-        prefix_only=mode == 'student' and response['steps'] < 50,
++        prefix_only=mode == 'student' and response['steps'] < 32,
+         numeric_action_changed=None, response=response)
+ 
+ 
 --- a/hybrid_rollout/robodojo/robodojo_server/server.py
 +++ b/hybrid_rollout/robodojo/robodojo_server/server.py
 @@ -67,15 +67,15 @@

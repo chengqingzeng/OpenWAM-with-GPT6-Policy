@@ -35,7 +35,17 @@ py="$repo/.venv/bin/python"
 "$py" -m pip install --upgrade pip setuptools wheel packaging ninja
 "$py" -m pip install torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 \
   --index-url https://download.pytorch.org/whl/cu128
-DS_BUILD_OPS=0 "$py" -m pip install --no-build-isolation -e "$repo/.deps/openwam" -e "$repo[dev]"
+requirements=()
+[[ ! -f "$repo/requirements-policy.lock.txt" ]] || requirements=(-r "$repo/requirements-policy.lock.txt")
+if command -v nvcc >/dev/null || [[ -x "${CUDA_HOME:-/usr/local/cuda}/bin/nvcc" ]]; then
+  DS_BUILD_OPS=0 "$py" -m pip install --no-build-isolation "${requirements[@]}" -e "$repo/.deps/openwam" -e "$repo[dev]"
+else
+  : "${ROBODOJO_BASE:?DeepSpeed metadata requires nvcc; set ROBODOJO_BASE to reuse the existing CUDA 12.8 container}"
+  OPENWAM_RUNTIME="$runtime" bash "$repo/scripts/container.sh" env CUDA_HOME=/usr/local/cuda DS_BUILD_OPS=0 \
+    "$py" -m pip install --no-build-isolation "${requirements[@]}" -e "$repo/.deps/openwam" -e "$repo[dev]"
+fi
+# Select the compatible wheel on the host too (the Isaac container has newer glibc).
+"$py" -m pip install --force-reinstall --no-deps --only-binary=:all: cryptography==50.0.1
 "$py" -m pip check
 "$py" -m pip freeze > "$runtime/policy-environment.freeze.txt"
 "$py" "$repo/scripts/download_checkpoint.py" \

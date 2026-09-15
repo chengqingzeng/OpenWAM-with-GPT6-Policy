@@ -1,0 +1,148 @@
+{
+  "experiment": "openwam_astra_smoke_003",
+  "scope": "Two-decision integration smoke, not a benchmark score",
+  "model": "gpt-6-astra",
+  "effort": "xhigh",
+  "method": "openwam_plus_gpt",
+  "evaluation_case": {
+    "panel_id": "openwam_panel60_g0",
+    "panel_sha256": "8ff95352ee5c226de505ece017bb2561a9e0d6b9765975f776866bffa75bb530",
+    "case_id": "build_tower__standard__g0__l0",
+    "task": "build_tower",
+    "runtime_task": "build_tower",
+    "variant": "standard",
+    "eval_seed": 0,
+    "layout_id": 0,
+    "reset_seed": 0,
+    "simulator_initial_seed": 0,
+    "policy_rng_seed": 42,
+    "layout_sha256": "afcf896086392357a8826f84bebe4910dcb7a5f1b84e7be435e16e3d5c3607a4"
+  },
+  "controller_seconds": 113.08823912000116,
+  "total_seconds": 212.317417,
+  "decisions": 2,
+  "policy_proposals": 2,
+  "physical_steps": 30,
+  "student_steps": 30,
+  "correction_steps": 0,
+  "outcome": {
+    "evaluation_case": {
+      "panel_id": "openwam_panel60_g0",
+      "panel_sha256": "8ff95352ee5c226de505ece017bb2561a9e0d6b9765975f776866bffa75bb530",
+      "case_id": "build_tower__standard__g0__l0",
+      "task": "build_tower",
+      "runtime_task": "build_tower",
+      "variant": "standard",
+      "eval_seed": 0,
+      "layout_id": 0,
+      "reset_seed": 0,
+      "simulator_initial_seed": 0,
+      "policy_rng_seed": 42,
+      "layout_sha256": "afcf896086392357a8826f84bebe4910dcb7a5f1b84e7be435e16e3d5c3607a4"
+    },
+    "complete": false,
+    "valid_for_success_rate": false,
+    "native_success": null,
+    "native_score": null,
+    "status": "budget_censored",
+    "reason": "decision_budget",
+    "native_control_steps": 30,
+    "native_step_limit": 1050
+  },
+  "artifact_status": "verified",
+  "raw_observations": 31,
+  "raw_actions": 30,
+  "video_frames": 31,
+  "control_dt": 0.04,
+  "sampled_gpu_peak_MiB": 33716,
+  "gpu_sample_period_seconds": 1,
+  "gpu_samples": 213,
+  "proposals": [
+    {
+      "file": "proposal_000.npz",
+      "arrays": {
+        "raw_actions": [
+          32,
+          20
+        ],
+        "actions": [
+          32,
+          16
+        ],
+        "cam_high": [
+          480,
+          640,
+          3
+        ],
+        "cam_left_wrist": [
+          480,
+          640,
+          3
+        ],
+        "cam_right_wrist": [
+          480,
+          640,
+          3
+        ],
+        "states": [
+          14
+        ],
+        "eef_positions": [
+          2,
+          3
+        ],
+        "eef_quaternions_wxyz": [
+          2,
+          4
+        ]
+      },
+      "sha256": "4d722e5944b9eba8d57c645cd1f470d5fa405a604b07c803a0d2b207ef7812d9"
+    },
+    {
+      "file": "proposal_001.npz",
+      "arrays": {
+        "raw_actions": [
+          32,
+          20
+        ],
+        "actions": [
+          32,
+          16
+        ],
+        "cam_high": [
+          480,
+          640,
+          3
+        ],
+        "cam_left_wrist": [
+          480,
+          640,
+          3
+        ],
+        "cam_right_wrist": [
+          480,
+          640,
+          3
+        ],
+        "states": [
+          14
+        ],
+        "eef_positions": [
+          2,
+          3
+        ],
+        "eef_quaternions_wxyz": [
+          2,
+          4
+        ]
+      },
+      "sha256": "f79990f3ba5f79a2a3deeecc369285bd14cc0f6f05f161a17c4b1461ab9c1f8f"
+    }
+  ],
+  "run_manifest_sha256": "29c4c7e4987af33dafa188521814b7d9b40cae18c3fc58a9e21f4daccc31fa8d",
+  "artifact_manifest_sha256": "7f10a2cfcc70d96a1c054dd1a6ae633198a1e822150fa07d4ecc9224bccc7f8d",
+  "source_manifest_sha256": "58be6ec87906e0d84433531efec30008e302cacb4f0e52885f0dff2e63d9aecd",
+  "all_owned_processes_exited": true,
+  "ports_released": true,
+  "recording_caveat": "This immutable smoke snapshot used a legacy pi05_plus_gpt default label in decision receipt logs only. Run/batch/policy identities correctly identify OpenWAM. The final source fixes the receipt label and H32 prefix metadata with a CPU regression test; the GPU smoke was not repeated for that metadata-only change."
+}

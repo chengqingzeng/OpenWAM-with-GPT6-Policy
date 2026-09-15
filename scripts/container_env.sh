@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-export RUNTIME_ROOT=/mnt/rollout/openwam_gpt6 ROLLOUT_SHARED_ROOT=/mnt/rollout/openwam_gpt6
+export RUNTIME_ROOT=/mnt/rollout/robodojo_mixed_control ROLLOUT_SHARED_ROOT=/mnt/rollout/robodojo_mixed_control
 export ROBODOJO_PYTHON=/root/miniconda3/envs/RoboDojo/bin/python
 export CODE_ROOT
 CODE_ROOT=$("$ROBODOJO_PYTHON" "$OPENWAM_REPO/scripts/build_runtime.py")
